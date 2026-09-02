@@ -35,6 +35,8 @@ class RoomVectorStoreRepository @Inject constructor(
         chunkDao.clear()
     }
 
+    override suspend fun count(): Int = chunkDao.count()
+
     private fun cosineSimilarity(a: FloatArray, b: FloatArray): Float {
         require(a.size == b.size) { "Embedding dimension mismatch: ${a.size} vs ${b.size}" }
         var dot = 0f

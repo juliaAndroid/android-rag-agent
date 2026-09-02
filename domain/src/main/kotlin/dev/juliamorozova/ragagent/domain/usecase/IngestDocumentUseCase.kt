@@ -1,6 +1,7 @@
 package dev.juliamorozova.ragagent.domain.usecase
 
-/** Chunks a document, embeds each chunk, and persists them to the vector store. */
+import dev.juliamorozova.ragagent.domain.model.IngestResult
+
 interface IngestDocumentUseCase {
-    suspend operator fun invoke(documentId: String, text: String)
+    suspend operator fun invoke(documentId: String, text: String): IngestResult
 }

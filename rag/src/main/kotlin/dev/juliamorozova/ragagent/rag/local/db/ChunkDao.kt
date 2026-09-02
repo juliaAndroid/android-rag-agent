@@ -17,4 +17,7 @@ interface ChunkDao {
 
     @Query("DELETE FROM chunks")
     suspend fun clear()
+
+    @Query("SELECT COUNT(*) FROM chunks")
+    suspend fun count(): Int
 }

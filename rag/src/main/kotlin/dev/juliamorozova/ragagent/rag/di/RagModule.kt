@@ -10,10 +10,12 @@ import dev.juliamorozova.ragagent.domain.usecase.EmbedTextUseCase
 import dev.juliamorozova.ragagent.domain.usecase.GenerateAnswerUseCase
 import dev.juliamorozova.ragagent.domain.usecase.RetrieveRelevantChunksUseCase
 import dev.juliamorozova.ragagent.domain.repository.VectorStoreRepository
+import dev.juliamorozova.ragagent.domain.usecase.IngestDocumentUseCase
 import dev.juliamorozova.ragagent.rag.agent.DefaultGenerateAnswerUseCase
 import dev.juliamorozova.ragagent.rag.agent.claude.ClaudeAgentLoop
 import dev.juliamorozova.ragagent.rag.chunking.SlidingWindowChunker
 import dev.juliamorozova.ragagent.rag.embedding.VoyageEmbedTextUseCase
+import dev.juliamorozova.ragagent.rag.ingestion.DefaultIngestDocumentUseCase
 import dev.juliamorozova.ragagent.rag.repository.RoomVectorStoreRepository
 import dev.juliamorozova.ragagent.rag.retrieval.DefaultRetrieveRelevantChunksUseCase
 import javax.inject.Singleton
@@ -51,4 +53,8 @@ abstract class RagModule {
     @Binds
     @Singleton
     abstract fun bindAgentLoop(impl: ClaudeAgentLoop): AgentLoop
+
+    @Binds
+    @Singleton
+    abstract fun bindIngestDocumentUseCase(impl: DefaultIngestDocumentUseCase): IngestDocumentUseCase
 }

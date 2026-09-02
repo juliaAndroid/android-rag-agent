@@ -10,21 +10,25 @@ characteristics, or UI-adjacent logic that's cheaper to just write twice).
 
 ## What was shared
 
-[TODO: concrete examples — e.g. "domain models, validation rules, a
-networking/repository layer using ktor + expect/actual for platform HTTP
-clients"]
+Backend-communication logic end-to-end: request handling, response parsing,
+and mapping into domain models. From the app side, a platform just called a
+shared function and got back a ready-to-use model — none of the parsing/
+mapping logic was duplicated per platform.
 
 ## What stayed platform-specific
 
-[TODO: concrete examples — e.g. "all UI (Compose/SwiftUI), navigation, anything
-touching platform permissions or background work scheduling"]
+Everything UI (Compose/SwiftUI), local storage/database, and anything
+touching the underlying system (permissions, platform APIs, background work
+scheduling).
 
 ## The actual trade-off felt in practice
 
 expect/actual declarations are a real maintenance surface — every shared
 interface with a platform-specific implementation is one more place that can
 drift out of sync between iOS and Android if not covered by shared tests.
-[TODO: how was this mitigated — shared test suites run on both targets?]
+This was mitigated with tests written once against the shared logic and run
+on both platform targets, rather than duplicating (and risking divergence
+between) a separate test suite per platform.
 
 ## How this shows up in this RAG project
 

@@ -2,8 +2,10 @@
 
 ## Context
 
-[TODO: name/describe the app(s) — e.g. "a white-label logistics app shipped under
-N different brand configurations from one codebase"]
+A ticketing app that bundled several transport services into one app —
+bike rental, car parking, and public transport in one city; some cities
+also added boat rental. Each city also had its own branding (colors,
+imagery), on top of the per-service differences.
 
 ## The problem
 
@@ -21,16 +23,21 @@ Android-specific. Each brand's customization lived in `app`-level DI wiring
 (which implementation gets bound to which interface) rather than in `if
 (brand == X)` branches scattered through business logic.
 
-[TODO: concrete example — a specific use case interface with two+ real
-implementations swapped per brand]
+One interface per capability (e.g. ticket purchase/booking), with a
+separate implementation per service type and per city — bound at the
+`app` DI layer, not branched on inside a single implementation. City-level
+branding (colors, imagery) was handled the same way: swapped per
+brand/city config rather than conditionally inside shared UI code.
 
 ## Trade-offs
 
 - Pro: a brand-specific bug can't silently break another brand's build, because
   the compiler enforces the module boundary.
 - Con: more upfront ceremony (interfaces, DI bindings) than a single-module app
-  would need — not worth it below a certain team/brand-count threshold.
-  [TODO: what threshold, in your judgment, tips this into being worth it?]
+  would need — not worth it below a certain team/brand-count threshold. In
+  practice, the payoff showed up early: as soon as there were 2 or more
+  cities/service variants, the module-boundary discipline was already
+  cheaper than the alternative of branching logic per city inline.
 
 ## How this shows up in this RAG project
 

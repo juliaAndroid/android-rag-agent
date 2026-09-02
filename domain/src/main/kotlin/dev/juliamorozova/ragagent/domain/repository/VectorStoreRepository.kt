@@ -17,4 +17,8 @@ interface VectorStoreRepository {
     suspend fun findSimilar(queryEmbedding: EmbeddingVector, topK: Int): List<RetrievedChunk>
 
     suspend fun clear()
+
+    /** Number of chunks currently stored — lets callers (e.g. a startup seed step)
+     * check "is there anything here yet?" without pulling all rows into memory. */
+    suspend fun count(): Int
 }

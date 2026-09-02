@@ -69,3 +69,25 @@ forgotten.
   independent feature needs its own persistence/network stack (feature-based
   vertical modularization, à la Google's Now in Android); with a single feature,
   it's redundancy without a payoff. `rag` absorbed `data`'s Room code accordingly.
+
+- **Embeddings batched per document, not per chunk.** Voyage's free tier has a low
+  requests-per-minute limit; the first ingestion attempt hit 429s almost immediately
+  because the original implementation called the embeddings API once per chunk (tens
+  of requests for ten documents, fired with no throttling). Voyage's `input` field
+  natively accepts an array, so ingestion now sends one request per document — one
+  HTTP call embeds every chunk in that document at once, well under the 1,000-text /
+  ~300K-token per-request limit for a single knowledge-base file. Trade-off: error
+  granularity moves from per-chunk to per-document — if the batch call fails, every
+  chunk in that document is reported as failed, since a single request can't be
+  partially attributed to one chunk. Acceptable here; a per-chunk retry inside a
+  failed batch would be the next refinement if it mattered in practice.
+  Batching alone wasn't enough, though — the free-tier limit is rate-based (~3
+  requests/minute), not a total-count cap, so 10 requests fired back-to-back still
+  hit 429s. A first pass added exponential-backoff retry on 429 (1s, 2s, 4s...),
+  but starting at 1s is close to useless against a ~20s-between-requests limit —
+  the first several retries just fail again immediately. Replaced with proactive
+  client-side throttling in `VoyageEmbedTextUseCase` (self-tracks the last request
+  time, waits out the ~20s window before the next call) so 429s are avoided rather
+  than reacted to; the backoff retry stays in place underneath as a fallback for
+  when throttling alone isn't enough (clock drift, a tighter-than-documented limit,
+  concurrent use of the same key elsewhere).
