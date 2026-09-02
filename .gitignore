@@ -1,0 +1,15 @@
+*.iml
+.gradle/
+build/
+/local.properties
+.idea/
+.DS_Store
+/captures
+.externalNativeBuild
+.cxx
+local.properties
+*.hprof
+.kotlin/
+
+# Keep the wrapper properties but not any locally-generated wrapper jar/cache
+!gradle/wrapper/gradle-wrapper.properties
