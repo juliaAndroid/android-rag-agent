@@ -13,13 +13,19 @@ private const val MAX_TOKENS = 1024
  *  stop asking rather than loop (and burn tokens) forever. */
 private const val MAX_TOOL_HOPS = 5
 
-private const val SYSTEM_PROMPT = """
+private const val DEFAULT_SYSTEM_PROMPT = """
 You are a technical assistant answering questions about the user's own Android/Kotlin
 engineering experience, grounded in a personal knowledge base of their real notes.
-Call the retrieve_context tool before answering any question about their projects,
-architecture decisions, or past work — do not rely on general knowledge for those.
+Call the retrieve_context tool before answering any question that might be answered
+by that knowledge base — their projects, architecture decisions, past work, or any
+personal facts and notes they've shared with you before (e.g. their name). Only skip
+retrieval for questions clearly unrelated to the user's own notes, like general
+programming knowledge with no personal context.
 If retrieval doesn't return anything relevant, say so honestly instead of inventing
 details or generic best-practice answers not backed by the retrieved context.
+Retrieved passages include a date. If passages conflict on a factual point (e.g. two
+different values for the same fact), treat the one with the more recent date as current
+and say so — don't just pick whichever scored marginally higher without checking the dates.
 """
 
 /**
@@ -33,7 +39,12 @@ class ClaudeAgentLoop @Inject constructor(
     private val json: Json,
 ) : AgentLoop {
 
-    override suspend fun run(conversation: List<AgentMessage>, tools: List<AgentTool>): AgentMessage {
+    override suspend fun run(
+        conversation: List<AgentMessage>,
+        tools: List<AgentTool>,
+        systemPrompt: String?,
+        onNarration: (String) -> Unit,
+    ): AgentMessage {
         val toolsByName = tools.associateBy { it.name }
         val wireTools = tools.map { tool ->
             ClaudeTool(
@@ -45,12 +56,19 @@ class ClaudeAgentLoop @Inject constructor(
 
         val messages = conversation.map { it.toClaudeMessage() }.toMutableList()
 
+        // Claude sometimes narrates a tool call ("I'll save that...") in the same
+        // response as the tool_use block, then produces no further text once it sees
+        // the tool_result — it considers itself already having "said" the relevant
+        // thing. Track the last non-blank text across hops so that narration isn't
+        // silently discarded, in case the hop that actually ends the loop has nothing.
+        var lastNonBlankText: String? = null
+
         repeat(MAX_TOOL_HOPS) {
             val response = claudeApi.createMessage(
                 ClaudeMessageRequest(
                     model = BuildConfig.CLAUDE_MODEL,
                     maxTokens = MAX_TOKENS,
-                    system = SYSTEM_PROMPT.trim(),
+                    system = (systemPrompt ?: DEFAULT_SYSTEM_PROMPT).trim(),
                     messages = messages,
                     tools = wireTools.ifEmpty { null },
                 ),
@@ -58,12 +76,19 @@ class ClaudeAgentLoop @Inject constructor(
 
             // Not streaming this response on purpose — see README "Known trade-offs".
 
+            val text = response.content
+                .filterIsInstance<ClaudeContentBlock.Text>()
+                .joinToString("\n") { it.text }
+            if (text.isNotBlank()) lastNonBlankText = text
+
             if (response.stopReason != "tool_use") {
-                val text = response.content
-                    .filterIsInstance<ClaudeContentBlock.Text>()
-                    .joinToString("\n") { it.text }
-                return AgentMessage(role = AgentMessage.Role.ASSISTANT, content = text)
+                return AgentMessage(
+                    role = AgentMessage.Role.ASSISTANT,
+                    content = text.ifBlank { lastNonBlankText.orEmpty() },
+                )
             }
+
+            if (text.isNotBlank()) onNarration(text)
 
             // Claude's turn (including its tool_use blocks) must be echoed back verbatim
             // before we can answer with tool_result blocks — the API requires both.

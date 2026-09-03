@@ -13,4 +13,5 @@ data class Chunk(
     /** Order of this chunk within its source document, for citation display. */
     val position: Int,
     val metadata: Map<String, String> = emptyMap(),
+    val createdAtMillis: Long = System.currentTimeMillis(),
 )

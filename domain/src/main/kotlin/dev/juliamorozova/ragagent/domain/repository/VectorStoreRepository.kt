@@ -21,4 +21,8 @@ interface VectorStoreRepository {
     /** Number of chunks currently stored — lets callers (e.g. a startup seed step)
      * check "is there anything here yet?" without pulling all rows into memory. */
     suspend fun count(): Int
+
+    /** Every chunk currently stored. Portfolio-scale corpus only — see
+     * [findSimilar]'s brute-force trade-off note; this has the same ceiling. */
+    suspend fun getAll(): List<Chunk>
 }

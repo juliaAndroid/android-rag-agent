@@ -19,7 +19,11 @@ object RoomModule {
     @Provides
     @Singleton
     fun provideRagDatabase(@ApplicationContext context: Context): RagDatabase =
-        Room.databaseBuilder(context, RagDatabase::class.java, RagDatabase.DATABASE_NAME).build()
+        Room.databaseBuilder(context, RagDatabase::class.java, RagDatabase.DATABASE_NAME)
+            // Pre-release: no real users' data to preserve yet, so wiping on a schema bump
+            // is fine. Switch to a real Migration once this ships for real.
+            .fallbackToDestructiveMigration(dropAllTables = true)
+            .build()
 
     @Provides
     fun provideChunkDao(database: RagDatabase): ChunkDao = database.chunkDao()

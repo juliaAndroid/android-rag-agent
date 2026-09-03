@@ -22,6 +22,7 @@ data class ChunkEntity(
     val text: String,
     val position: Int,
     @ColumnInfo(name = "embedding") val embedding: FloatArray,
+    @ColumnInfo(name = "created_at_millis") val createdAtMillis: Long,
 ) {
     // FloatArray needs a structural equals/hashCode for Room's change detection and tests.
     override fun equals(other: Any?): Boolean {
@@ -31,6 +32,7 @@ data class ChunkEntity(
             documentId == other.documentId &&
             text == other.text &&
             position == other.position &&
+            createdAtMillis == other.createdAtMillis &&
             embedding.contentEquals(other.embedding)
     }
 
@@ -39,6 +41,7 @@ data class ChunkEntity(
         result = 31 * result + documentId.hashCode()
         result = 31 * result + text.hashCode()
         result = 31 * result + position
+        result = 31 * result + createdAtMillis.hashCode()
         result = 31 * result + embedding.contentHashCode()
         return result
     }

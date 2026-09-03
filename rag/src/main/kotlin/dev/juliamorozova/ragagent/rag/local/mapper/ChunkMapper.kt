@@ -15,6 +15,7 @@ fun ChunkEntity.toDomain(): Chunk = Chunk(
     documentId = documentId,
     text = text,
     position = position,
+    createdAtMillis = createdAtMillis,
 )
 
 fun Chunk.toEntity(embedding: EmbeddingVector): ChunkEntity = ChunkEntity(
@@ -23,6 +24,7 @@ fun Chunk.toEntity(embedding: EmbeddingVector): ChunkEntity = ChunkEntity(
     text = text,
     position = position,
     embedding = embedding.values,
+    createdAtMillis = createdAtMillis,
 )
 
 fun ChunkEntity.toRetrievedChunk(score: Float): RetrievedChunk =

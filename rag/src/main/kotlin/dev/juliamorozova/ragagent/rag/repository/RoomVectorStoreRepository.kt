@@ -1,6 +1,7 @@
 package dev.juliamorozova.ragagent.rag.repository
 
 import dev.juliamorozova.ragagent.rag.local.db.ChunkDao
+import dev.juliamorozova.ragagent.rag.local.mapper.toDomain
 import dev.juliamorozova.ragagent.rag.local.mapper.toEntity
 import dev.juliamorozova.ragagent.rag.local.mapper.toRetrievedChunk
 import dev.juliamorozova.ragagent.domain.model.Chunk
@@ -36,6 +37,8 @@ class RoomVectorStoreRepository @Inject constructor(
     }
 
     override suspend fun count(): Int = chunkDao.count()
+
+    override suspend fun getAll(): List<Chunk> = chunkDao.getAll().map { it.toDomain() }
 
     private fun cosineSimilarity(a: FloatArray, b: FloatArray): Float {
         require(a.size == b.size) { "Embedding dimension mismatch: ${a.size} vs ${b.size}" }

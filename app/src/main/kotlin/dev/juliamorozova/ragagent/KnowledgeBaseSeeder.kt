@@ -28,7 +28,7 @@ class KnowledgeBaseSeeder @Inject constructor(
         if (vectorStore.count() > 0) return
 
         val fileNames = context.assets.list(KNOWLEDGE_BASE_ASSETS_DIR).orEmpty()
-            .filter { it.endsWith(".md") && it != "README.md" }
+            .filter { it.endsWith(".md") }
 
         for (fileName in fileNames) {
             runCatching {

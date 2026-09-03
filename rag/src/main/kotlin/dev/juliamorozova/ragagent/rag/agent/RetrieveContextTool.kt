@@ -54,7 +54,15 @@ class RetrieveContextTool @Inject constructor(
         val request = json.decodeFromString<ToolInput>(inputJson)
         val results = retrieveRelevantChunks(query = request.query, topK = request.topK ?: 5)
         lastRetrieved = results
-        return json.encodeToString(results.map { ToolResultChunk(text = it.chunk.text, score = it.score) })
+        return json.encodeToString(
+            results.map {
+                ToolResultChunk(
+                    text = it.chunk.text,
+                    score = it.score,
+                    date = java.time.Instant.ofEpochMilli(it.chunk.createdAtMillis).toString(),
+                )
+            },
+        )
     }
 
     @Serializable
@@ -67,5 +75,6 @@ class RetrieveContextTool @Inject constructor(
     private data class ToolResultChunk(
         val text: String,
         val score: Float,
+        val date: String,
     )
 }
