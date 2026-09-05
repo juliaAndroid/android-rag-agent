@@ -44,6 +44,7 @@ dependencies {
     implementation(libs.androidx.navigation.compose)
 
     implementation(libs.kotlinx.coroutines.android)
+    implementation(libs.retrofit.core)
 
     debugImplementation(libs.androidx.ui.tooling)
 

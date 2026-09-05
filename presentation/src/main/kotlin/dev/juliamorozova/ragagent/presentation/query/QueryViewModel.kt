@@ -10,7 +10,17 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import retrofit2.HttpException
+import java.io.IOException
 import javax.inject.Inject
+
+/** Maps a raw network/HTTP failure to copy safe to show the user — never [Throwable.message],
+ *  which can be a raw exception string (stack internals, host names). */
+private fun Throwable.toUserMessage(): String = when {
+    this is HttpException && code() == 429 -> "Rate limited, wait a moment and try again"
+    this is IOException -> "Request timed out, try again"
+    else -> "Something went wrong"
+}
 
 @HiltViewModel
 class QueryViewModel @Inject constructor(
@@ -36,7 +46,7 @@ class QueryViewModel @Inject constructor(
                     _uiState.update { it.copy(isLoading = false, answer = answer, answeredQuery = query) }
                 }
                 .onFailure { error ->
-                    _uiState.update { it.copy(isLoading = false, errorMessage = error.message ?: "Unknown error") }
+                    _uiState.update { it.copy(isLoading = false, errorMessage = error.toUserMessage()) }
                 }
         }
     }
@@ -66,7 +76,7 @@ class QueryViewModel @Inject constructor(
                         it.copy(
                             isSavingNote = false,
                             noteSaveNarration = null,
-                            noteSaveMessage = "Failed to save: ${error.message}",
+                            noteSaveMessage = "Failed to save: ${error.toUserMessage()}",
                         )
                     }
                 }
