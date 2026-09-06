@@ -17,7 +17,11 @@ import org.junit.Test
  */
 class ClaudeContentBlockSerializationTest {
 
-    private val json = Json { ignoreUnknownKeys = true }
+    // Mirrors ClaudeNetworkModule.provideClaudeJson()'s encodeDefaults = true — the "type"
+    // fields on ClaudeContentBlock subtypes are wire discriminators with default values,
+    // so without it they're silently omitted on encode (kotlinx.serialization's own
+    // default), and decoding a block with no "type" key fails with "Unknown ... type: 'null'".
+    private val json = Json { ignoreUnknownKeys = true; encodeDefaults = true }
 
     @Test
     fun `decodes a text block`() {

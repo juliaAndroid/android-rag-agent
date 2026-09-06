@@ -1,11 +1,13 @@
+@file:OptIn(InternalSerializationApi::class)
+
 package dev.juliamorozova.ragagent.rag.agent
 
 import dev.juliamorozova.ragagent.domain.agent.AgentTool
 import dev.juliamorozova.ragagent.domain.model.RetrievedChunk
 import dev.juliamorozova.ragagent.domain.usecase.RetrieveRelevantChunksUseCase
+import kotlinx.serialization.InternalSerializationApi
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
-import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import javax.inject.Inject
