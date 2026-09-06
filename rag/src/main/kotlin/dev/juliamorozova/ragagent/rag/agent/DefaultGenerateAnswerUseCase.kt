@@ -19,9 +19,10 @@ class DefaultGenerateAnswerUseCase @Inject constructor(
     private val retrieveContextTool: RetrieveContextTool,
 ) : GenerateAnswerUseCase {
 
-    override suspend fun invoke(query: String): RagAnswer {
+    override suspend fun invoke(query: String, onNarration: (String) -> Unit): RagAnswer {
+        retrieveContextTool.clearLastRetrieved()
         val conversation = listOf(AgentMessage(role = AgentMessage.Role.USER, content = query))
-        val answer = agentLoop.run(conversation, listOf(retrieveContextTool))
+        val answer = agentLoop.run(conversation, listOf(retrieveContextTool), onNarration = onNarration)
         return RagAnswer(
             text = answer.content,
             citations = retrieveContextTool.lastRetrieved,

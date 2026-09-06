@@ -12,7 +12,11 @@ private const val SAVE_NOTE_SYSTEM_PROMPT = "You extract durable facts from a si
     "what the user is telling you right now; don't try to judge whether it's a duplicate of something " +
     "already in the knowledge base — that's retrieval's job, not yours. Only skip calling the tool when the " +
     "exchange genuinely contains no factual statement at all, such as small talk or a question whose reply " +
-    "adds no new information."
+    "adds no new information.\n\n" +
+    "Your final reply — whether or not you called the tool — is shown to the user directly in a brief, " +
+    "short-lived toast notification, not to another developer. Write it as a single short, plain sentence " +
+    "addressed to them (e.g. \"Saved that your name is Julia.\" or \"Nothing new to save there.\") — never " +
+    "mention save_note, tools, or your own reasoning process."
 
 /**
  * Drives a focused Claude agent call — separate from [DefaultGenerateAnswerUseCase]'s

@@ -40,13 +40,21 @@ class QueryViewModel @Inject constructor(
         if (query.isBlank()) return
 
         viewModelScope.launch {
-            _uiState.update { it.copy(isLoading = true, errorMessage = null) }
-            runCatching { generateAnswer(query) }
+            _uiState.update { it.copy(isLoading = true, errorMessage = null, answerNarration = null) }
+            runCatching {
+                generateAnswer(query) { narration ->
+                    _uiState.update { it.copy(answerNarration = narration) }
+                }
+            }
                 .onSuccess { answer ->
-                    _uiState.update { it.copy(isLoading = false, answer = answer, answeredQuery = query) }
+                    _uiState.update {
+                        it.copy(isLoading = false, answer = answer, answeredQuery = query, answerNarration = null)
+                    }
                 }
                 .onFailure { error ->
-                    _uiState.update { it.copy(isLoading = false, errorMessage = error.toUserMessage()) }
+                    _uiState.update {
+                        it.copy(isLoading = false, errorMessage = error.toUserMessage(), answerNarration = null)
+                    }
                 }
         }
     }

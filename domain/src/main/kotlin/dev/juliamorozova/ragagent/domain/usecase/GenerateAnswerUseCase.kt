@@ -7,5 +7,10 @@ import dev.juliamorozova.ragagent.domain.model.RagAnswer
  * retrieval tool available) and returns a grounded, citable answer.
  */
 interface GenerateAnswerUseCase {
-    suspend operator fun invoke(query: String): RagAnswer
+    /**
+     * @param onNarration Invoked with any text Claude produces alongside a tool call
+     * (e.g. "I'll check your personal knowledge base...") as soon as it's available —
+     * lets the caller show live progress instead of just a spinner.
+     */
+    suspend operator fun invoke(query: String, onNarration: (String) -> Unit = {}): RagAnswer
 }

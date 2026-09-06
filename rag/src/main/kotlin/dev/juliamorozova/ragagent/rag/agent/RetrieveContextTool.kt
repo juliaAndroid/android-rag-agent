@@ -50,6 +50,12 @@ class RetrieveContextTool @Inject constructor(
     var lastRetrieved: List<RetrievedChunk> = emptyList()
         private set
 
+    /** Clears any leftover result from a previous query, so a query that never calls
+     *  this tool doesn't inherit stale citations from an earlier, unrelated one. */
+    fun clearLastRetrieved() {
+        lastRetrieved = emptyList()
+    }
+
     override suspend fun execute(inputJson: String): String {
         val request = json.decodeFromString<ToolInput>(inputJson)
         val results = retrieveRelevantChunks(query = request.query, topK = request.topK ?: 5)

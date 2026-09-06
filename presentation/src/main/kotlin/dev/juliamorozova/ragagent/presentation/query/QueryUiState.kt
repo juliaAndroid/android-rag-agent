@@ -6,6 +6,9 @@ import dev.juliamorozova.ragagent.domain.model.RagAnswer
 data class QueryUiState(
     val query: String = "",
     val isLoading: Boolean = false,
+    /** Claude's own commentary while an answer is being generated (e.g. "I'll check your
+     *  personal knowledge base..."), shown in place of a generic loading label. */
+    val answerNarration: String? = null,
     val answer: RagAnswer? = null,
     /** The query that produced [answer] — distinct from [query], which tracks live edits
      *  to the input field and may have changed since that answer was generated. */
