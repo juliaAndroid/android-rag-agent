@@ -15,23 +15,20 @@ android {
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
         // Read from ~/.gradle/gradle.properties (global, outside any git repo) —
-        // NOT from this project's local.properties. Falls back to "" so a clone
-        // without the key set still compiles; calling the Claude API without it
-        // will just fail at runtime with an auth error, not a build error.
+        // NOT from this project's local.properties — so the proxy URL never lands in
+        // the public repo. The fallback is a syntactically valid but unreachable URL
+        // (".invalid" is reserved and never resolves): a clone without the property still
+        // builds and launches (Retrofit rejects an empty base URL), and calls just fail
+        // with a network error. The Claude and Voyage API keys live in the proxy, not here.
         buildConfigField(
             "String",
-            "CLAUDE_API_KEY",
-            "\"${providers.gradleProperty("CLAUDE_API_KEY").getOrElse("")}\"",
+            "PROXY_BASE_URL",
+            "\"${providers.gradleProperty("PROXY_BASE_URL").getOrElse("https://proxy.invalid/")}\"",
         )
         buildConfigField(
             "String",
             "CLAUDE_MODEL",
             "\"${providers.gradleProperty("CLAUDE_MODEL").getOrElse("claude-haiku-4-5-20251001")}\"",
-        )
-        buildConfigField(
-            "String",
-            "VOYAGE_API_KEY",
-            "\"${providers.gradleProperty("VOYAGE_API_KEY").getOrElse("")}\"",
         )
     }
 

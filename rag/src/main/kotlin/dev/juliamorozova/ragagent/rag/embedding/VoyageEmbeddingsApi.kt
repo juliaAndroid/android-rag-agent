@@ -5,7 +5,8 @@ import retrofit2.http.Body
 import retrofit2.http.POST
 
 /**
- * Retrofit service for the Voyage AI embeddings endpoint.
+ * Retrofit service for the Voyage AI embeddings endpoint, reached through the serverless
+ * proxy (`POST voyage/embeddings` there forwards to Voyage's `v1/embeddings`).
  * https://docs.voyageai.com/reference/embeddings-api
  *
  * Lives in `rag` (not `data`) — see the module architecture decision: `rag` is the
@@ -14,7 +15,7 @@ import retrofit2.http.POST
  */
 interface VoyageEmbeddingsApi {
 
-    @POST("v1/embeddings")
+    @POST("voyage/embeddings")
     suspend fun embed(@Body request: VoyageEmbeddingsRequest): VoyageEmbeddingsResponse
 }
 
