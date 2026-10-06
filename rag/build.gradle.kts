@@ -36,6 +36,11 @@ android {
         buildConfig = true
     }
 
+    testOptions {
+        // android.util.Log (used by DefaultSaveNoteUseCase) is a stub on the plain JVM.
+        unitTests.isReturnDefaultValues = true
+    }
+
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17

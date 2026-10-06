@@ -4,7 +4,8 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dev.juliamorozova.ragagent.domain.usecase.GenerateAnswerUseCase
-import dev.juliamorozova.ragagent.domain.usecase.SaveNoteFromChatUseCase
+import dev.juliamorozova.ragagent.domain.usecase.ProposeNotesFromChatUseCase
+import dev.juliamorozova.ragagent.domain.usecase.SaveNoteUseCase
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -22,10 +23,16 @@ private fun Throwable.toUserMessage(): String = when {
     else -> "Something went wrong"
 }
 
+private const val NOTHING_TO_SAVE_MESSAGE = "Nothing new to save"
+
+private fun savedMessage(notes: List<String>): String =
+    if (notes.size == 1) "Saved: ${notes.single()}" else "Saved ${notes.size} notes"
+
 @HiltViewModel
 class QueryViewModel @Inject constructor(
     private val generateAnswer: GenerateAnswerUseCase,
-    private val saveNoteFromChat: SaveNoteFromChatUseCase,
+    private val proposeNotes: ProposeNotesFromChatUseCase,
+    private val saveNote: SaveNoteUseCase,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(QueryUiState())
@@ -59,6 +66,8 @@ class QueryViewModel @Inject constructor(
         }
     }
 
+    /** Asks the agent what is worth saving. Nothing is stored yet: the proposals go to a
+     *  confirmation dialog ([QueryUiState.pendingNotes]) and are stored only by [onConfirmSave]. */
     fun saveAsNote() {
         val query = _uiState.value.answeredQuery ?: return
         val answer = _uiState.value.answer ?: return
@@ -66,16 +75,17 @@ class QueryViewModel @Inject constructor(
         viewModelScope.launch {
             _uiState.update { it.copy(isSavingNote = true, noteSaveNarration = null) }
             runCatching {
-                saveNoteFromChat(query, answer.text) { narration ->
+                proposeNotes(query, answer.text) { narration ->
                     _uiState.update { it.copy(noteSaveNarration = narration) }
                 }
             }
-                .onSuccess { closingText ->
+                .onSuccess { notes ->
                     _uiState.update {
                         it.copy(
                             isSavingNote = false,
                             noteSaveNarration = null,
-                            noteSaveMessage = closingText.ifBlank { "Saved" },
+                            pendingNotes = notes,
+                            noteSaveMessage = if (notes.isEmpty()) NOTHING_TO_SAVE_MESSAGE else null,
                         )
                     }
                 }
@@ -89,6 +99,33 @@ class QueryViewModel @Inject constructor(
                     }
                 }
         }
+    }
+
+    /** Stores exactly the notes the user just saw in the dialog. */
+    fun onConfirmSave() {
+        val notes = _uiState.value.pendingNotes
+        if (notes.isEmpty()) return
+
+        viewModelScope.launch {
+            _uiState.update { it.copy(isSavingNote = true, pendingNotes = emptyList()) }
+            runCatching { notes.forEach { saveNote(it) } }
+                .onSuccess {
+                    _uiState.update { it.copy(isSavingNote = false, noteSaveMessage = savedMessage(notes)) }
+                }
+                .onFailure { error ->
+                    _uiState.update {
+                        it.copy(
+                            isSavingNote = false,
+                            noteSaveMessage = "Failed to save: ${error.toUserMessage()}",
+                        )
+                    }
+                }
+        }
+    }
+
+    /** The user declined: drop the proposals without storing anything. */
+    fun onDismissSave() {
+        _uiState.update { it.copy(pendingNotes = emptyList()) }
     }
 
     fun onNoteSaveMessageShown() {

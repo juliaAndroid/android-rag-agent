@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
@@ -108,6 +109,21 @@ fun QueryScreen(
         val message = state.noteSaveMessage ?: return@LaunchedEffect
         snackbarHostState.showSnackbar(message, duration = SnackbarDuration.Long)
         viewModel.onNoteSaveMessageShown()
+    }
+
+    if (state.pendingNotes.isNotEmpty()) {
+        // Shows exactly what will be stored, as plain text, before anything is written.
+        AlertDialog(
+            onDismissRequest = viewModel::onDismissSave,
+            title = { Text(if (state.pendingNotes.size == 1) "Save this note?" else "Save these notes?") },
+            text = {
+                Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
+                    state.pendingNotes.forEach { note -> Text("• $note") }
+                }
+            },
+            confirmButton = { TextButton(onClick = viewModel::onConfirmSave) { Text("Save") } },
+            dismissButton = { TextButton(onClick = viewModel::onDismissSave) { Text("Cancel") } },
+        )
     }
 
     Scaffold(

@@ -11,9 +11,11 @@ import dev.juliamorozova.ragagent.domain.usecase.GenerateAnswerUseCase
 import dev.juliamorozova.ragagent.domain.usecase.RetrieveRelevantChunksUseCase
 import dev.juliamorozova.ragagent.domain.repository.VectorStoreRepository
 import dev.juliamorozova.ragagent.domain.usecase.IngestDocumentUseCase
-import dev.juliamorozova.ragagent.domain.usecase.SaveNoteFromChatUseCase
+import dev.juliamorozova.ragagent.domain.usecase.ProposeNotesFromChatUseCase
+import dev.juliamorozova.ragagent.domain.usecase.SaveNoteUseCase
 import dev.juliamorozova.ragagent.rag.agent.DefaultGenerateAnswerUseCase
-import dev.juliamorozova.ragagent.rag.agent.DefaultSaveNoteFromChatUseCase
+import dev.juliamorozova.ragagent.rag.agent.DefaultProposeNotesFromChatUseCase
+import dev.juliamorozova.ragagent.rag.agent.DefaultSaveNoteUseCase
 import dev.juliamorozova.ragagent.rag.agent.claude.ClaudeAgentLoop
 import dev.juliamorozova.ragagent.rag.chunking.SlidingWindowChunker
 import dev.juliamorozova.ragagent.rag.embedding.VoyageEmbedTextUseCase
@@ -62,5 +64,11 @@ abstract class RagModule {
 
     @Binds
     @Singleton
-    abstract fun bindSaveNoteFromChatUseCase(impl: DefaultSaveNoteFromChatUseCase): SaveNoteFromChatUseCase
+    abstract fun bindProposeNotesFromChatUseCase(
+        impl: DefaultProposeNotesFromChatUseCase,
+    ): ProposeNotesFromChatUseCase
+
+    @Binds
+    @Singleton
+    abstract fun bindSaveNoteUseCase(impl: DefaultSaveNoteUseCase): SaveNoteUseCase
 }

@@ -15,8 +15,11 @@ data class QueryUiState(
     val answeredQuery: String? = null,
     val errorMessage: String? = null,
     val isSavingNote: Boolean = false,
-    /** Claude's own commentary while a save is in progress — shown next to the spinner. */
+    /** Claude's own commentary while a note is being proposed — shown next to the spinner. */
     val noteSaveNarration: String? = null,
+    /** Notes the agent proposed, awaiting the user's confirmation in a dialog. Nothing is
+     *  stored until [QueryViewModel.onConfirmSave]; non-empty means the dialog is showing. */
+    val pendingNotes: List<String> = emptyList(),
     /** One-shot event: UI shows it in a Snackbar, then calls [QueryViewModel.onNoteSaveMessageShown]. */
     val noteSaveMessage: String? = null,
 )

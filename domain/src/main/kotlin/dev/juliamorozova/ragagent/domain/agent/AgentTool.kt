@@ -12,5 +12,13 @@ interface AgentTool {
     /** JSON schema (as a string) describing the tool's input, per the Claude API tool spec. */
     val inputSchema: String
 
+    /**
+     * When true, the agent loop returns right after executing this tool instead of sending
+     * the result back to the model for a follow-up turn. For tools whose call *is* the
+     * answer (e.g. proposing a note for the user to confirm), so the extra round trip that
+     * would only produce closing commentary is skipped.
+     */
+    val endsTurn: Boolean get() = false
+
     suspend fun execute(inputJson: String): String
 }
