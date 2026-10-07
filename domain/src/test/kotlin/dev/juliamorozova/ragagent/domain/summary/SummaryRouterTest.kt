@@ -30,6 +30,8 @@ class SummaryRouterTest {
             return availability
         }
 
+        override suspend fun downloadModel(onProgress: (percent: Int) -> Unit) = Unit
+
         override suspend fun summarize(text: String): List<String> {
             val outcome = outcomes[minOf(summarizeCalls, outcomes.lastIndex)]
             summarizeCalls++

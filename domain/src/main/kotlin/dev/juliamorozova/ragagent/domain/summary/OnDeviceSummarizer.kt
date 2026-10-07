@@ -14,6 +14,15 @@ interface OnDeviceSummarizer {
     suspend fun availability(): OnDeviceAvailability
 
     /**
+     * Downloads the model when [availability] is [OnDeviceAvailability.Downloadable]. Returns once
+     * the download has finished.
+     *
+     * @param onProgress Called with 0..100 as the download advances.
+     * @throws OnDeviceSummarizationException when the download fails.
+     */
+    suspend fun downloadModel(onProgress: (percent: Int) -> Unit = {})
+
+    /**
      * @return The summary as separate bullet points, without bullet markers.
      * @throws OnDeviceSummarizationException when the model can't produce a summary; its
      * [OnDeviceSummarizationException.reason] says why.

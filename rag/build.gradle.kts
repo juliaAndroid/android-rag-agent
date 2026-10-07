@@ -67,6 +67,8 @@ dependencies {
     implementation(libs.retrofit.kotlinx.serialization.converter)
     implementation(libs.okhttp.logging.interceptor)
 
+    implementation(libs.mlkit.genai.summarization)
+
     testImplementation(libs.junit)
     testImplementation(libs.truth)
     testImplementation(libs.kotlinx.coroutines.test)

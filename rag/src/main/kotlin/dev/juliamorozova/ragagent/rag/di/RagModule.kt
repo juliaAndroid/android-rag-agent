@@ -13,8 +13,14 @@ import dev.juliamorozova.ragagent.domain.repository.VectorStoreRepository
 import dev.juliamorozova.ragagent.domain.usecase.IngestDocumentUseCase
 import dev.juliamorozova.ragagent.domain.usecase.ProposeNotesFromChatUseCase
 import dev.juliamorozova.ragagent.domain.usecase.SaveNoteUseCase
+import dagger.Provides
 import dev.juliamorozova.ragagent.domain.summary.CloudSummarizer
+import dev.juliamorozova.ragagent.domain.summary.OnDeviceSummarizer
+import dev.juliamorozova.ragagent.domain.summary.SummaryRouter
 import dev.juliamorozova.ragagent.rag.agent.ClaudeSummarizer
+import dev.juliamorozova.ragagent.domain.usecase.SummarizeNotesUseCase
+import dev.juliamorozova.ragagent.rag.agent.nano.NanoSummarizer
+import dev.juliamorozova.ragagent.rag.summary.DefaultSummarizeNotesUseCase
 import dev.juliamorozova.ragagent.rag.agent.DefaultGenerateAnswerUseCase
 import dev.juliamorozova.ragagent.rag.agent.DefaultProposeNotesFromChatUseCase
 import dev.juliamorozova.ragagent.rag.agent.DefaultSaveNoteUseCase
@@ -77,4 +83,20 @@ abstract class RagModule {
     @Binds
     @Singleton
     abstract fun bindCloudSummarizer(impl: ClaudeSummarizer): CloudSummarizer
+
+    @Binds
+    @Singleton
+    abstract fun bindOnDeviceSummarizer(impl: NanoSummarizer): OnDeviceSummarizer
+
+    @Binds
+    @Singleton
+    abstract fun bindSummarizeNotesUseCase(impl: DefaultSummarizeNotesUseCase): SummarizeNotesUseCase
+
+    companion object {
+        /** A singleton so a "device not supported" verdict is remembered for the whole session. */
+        @Provides
+        @Singleton
+        fun provideSummaryRouter(onDevice: OnDeviceSummarizer, cloud: CloudSummarizer): SummaryRouter =
+            SummaryRouter(onDevice, cloud)
+    }
 }
