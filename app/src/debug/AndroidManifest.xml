@@ -1,0 +1,17 @@
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <application>
+        <!--
+            Debug-only Nano experiments. Deliberately has no LAUNCHER filter: with two launcher
+            activities Android Studio's "Run" may start this one instead of MainActivity. Exported so
+            it can be started from a shell:
+              adb shell am start -n dev.juliamorozova.ragagent/.NanoSpikeActivity
+        -->
+        <activity
+            android:name=".NanoSpikeActivity"
+            android:exported="true"
+            android:label="Nano spike"
+            android:theme="@style/Theme.RagAgent" />
+    </application>
+
+</manifest>

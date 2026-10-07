@@ -1,0 +1,63 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Mode selector, input and action button -->
+    <string name="query_mode_ask">Ask</string>
+    <string name="query_mode_summarize">Summarize</string>
+    <string name="query_hint_ask">Ask about the knowledge base</string>
+    <string name="query_hint_summarize">Enter a topic, e.g. clean architecture</string>
+    <string name="query_action_ask">Ask</string>
+    <string name="query_action_summarize">Summarize</string>
+
+    <!-- Empty states and progress -->
+    <string name="query_empty_ask">Ask something about Clean Architecture, KMM, or mobile AI security</string>
+    <string name="query_empty_summarize">Get a short summary of what your notes say about a topic.</string>
+    <string name="query_thinking">Thinking…</string>
+    <string name="query_summarizing">Summarizing…</string>
+    <string name="query_nothing_found">No notes found for this topic.</string>
+
+    <!-- Saving a note -->
+    <string name="query_save_as_note">Save as note</string>
+    <string name="query_save_note_title_one">Save this note?</string>
+    <string name="query_save_note_title_many">Save these notes?</string>
+    <string name="query_save">Save</string>
+    <string name="query_cancel">Cancel</string>
+    <string name="query_note_bullet">• %1$s</string>
+    <string name="query_nothing_to_save">Nothing new to save</string>
+    <string name="query_saved_one">Saved: %1$s</string>
+    <string name="query_saved_many">Saved %1$d notes</string>
+    <string name="query_failed_to_save">Failed to save: %1$s</string>
+
+    <!-- Errors -->
+    <string name="query_error_rate_limited">Rate limited, wait a moment and try again</string>
+    <string name="query_error_timeout">Request timed out, try again</string>
+    <string name="query_error_generic">Something went wrong</string>
+
+    <!-- Source chips -->
+    <string name="query_citation_note">Your note · %1$s</string>
+
+    <!-- Summary badge -->
+    <string name="query_badge_on_device">On-device · Gemini Nano</string>
+    <string name="query_badge_cloud">Cloud · Claude</string>
+
+    <!-- On-device model status -->
+    <string name="query_model_checking">Checking the on-device model…</string>
+    <string name="query_model_ready">On-device model: ready</string>
+    <string name="query_model_not_downloaded">On-device model: not downloaded</string>
+    <string name="query_model_download">Download</string>
+    <string name="query_model_downloading">Downloading… %1$d%%</string>
+    <string name="query_model_unavailable">The on-device model isn\'t available on this phone. Summaries use the cloud.</string>
+    <string name="query_model_aicore_off">Turn on AICore in Settings → Apps to use the on-device model.</string>
+
+    <!-- Why a summary came from the cloud -->
+    <string name="query_fallback_unsupported_device">This phone doesn\'t support the on-device model.</string>
+    <string name="query_fallback_service_unavailable">The on-device AI service isn\'t available. Check that AICore is enabled.</string>
+    <string name="query_fallback_model_not_downloaded">The on-device model isn\'t downloaded yet.</string>
+    <string name="query_fallback_model_downloading">The on-device model is still downloading.</string>
+    <string name="query_fallback_input_too_short">Too little text for the on-device model.</string>
+    <string name="query_fallback_input_too_large">Too much text for the on-device model.</string>
+    <string name="query_fallback_generation_failed">The on-device model couldn\'t summarize this.</string>
+    <string name="query_fallback_busy">The on-device model was busy.</string>
+    <string name="query_fallback_needs_system_update">A system update is needed for the on-device model.</string>
+    <string name="query_fallback_not_enough_disk_space">Not enough storage for the on-device model.</string>
+    <string name="query_fallback_unknown">The on-device model failed.</string>
+</resources>

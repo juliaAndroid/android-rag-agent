@@ -21,6 +21,8 @@ import androidx.compose.material3.AssistChip
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.FilterChip
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarDuration
@@ -41,19 +43,26 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import dev.juliamorozova.ragagent.domain.model.FallbackReason
+import dev.juliamorozova.ragagent.domain.model.NotesSummary
+import dev.juliamorozova.ragagent.domain.model.RetrievedChunk
+import dev.juliamorozova.ragagent.domain.model.SummaryEngine
+import dev.juliamorozova.ragagent.presentation.R
 import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 
 private val CITATION_DATE_FORMATTER = DateTimeFormatter.ofPattern("MMM d")
 
+@Composable
 private fun citationLabel(documentId: String, createdAtMillis: Long): String {
     if (documentId.startsWith("chat-note-")) {
         val date = Instant.ofEpochMilli(createdAtMillis).atZone(ZoneId.systemDefault()).toLocalDate()
-        return "Your note · ${date.format(CITATION_DATE_FORMATTER)}"
+        return stringResource(R.string.query_citation_note, date.format(CITATION_DATE_FORMATTER))
     }
     return documentId.removeSuffix(".md")
 }
@@ -95,8 +104,7 @@ private fun String.trimToWordBoundaries(): String {
     }
 }
 
-/** Query/response screen: text input, submit, answer with source citations. */
-@OptIn(ExperimentalLayoutApi::class)
+/** Query/response screen: Ask a question or Summarize a topic, with source citations. */
 @Composable
 fun QueryScreen(
     modifier: Modifier = Modifier,
@@ -104,25 +112,21 @@ fun QueryScreen(
 ) {
     val state by viewModel.uiState.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }
+    val isBusy = state.isLoading || state.isSummarizing
 
+    // Resolved while composing (string resources need it), then shown once per message.
+    val noteSaveText = state.noteSaveMessage?.asString()
     LaunchedEffect(state.noteSaveMessage) {
-        val message = state.noteSaveMessage ?: return@LaunchedEffect
+        val message = noteSaveText ?: return@LaunchedEffect
         snackbarHostState.showSnackbar(message, duration = SnackbarDuration.Long)
         viewModel.onNoteSaveMessageShown()
     }
 
     if (state.pendingNotes.isNotEmpty()) {
-        // Shows exactly what will be stored, as plain text, before anything is written.
-        AlertDialog(
-            onDismissRequest = viewModel::onDismissSave,
-            title = { Text(if (state.pendingNotes.size == 1) "Save this note?" else "Save these notes?") },
-            text = {
-                Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
-                    state.pendingNotes.forEach { note -> Text("• $note") }
-                }
-            },
-            confirmButton = { TextButton(onClick = viewModel::onConfirmSave) { Text("Save") } },
-            dismissButton = { TextButton(onClick = viewModel::onDismissSave) { Text("Cancel") } },
+        SaveNoteDialog(
+            notes = state.pendingNotes,
+            onConfirm = viewModel::onConfirmSave,
+            onDismiss = viewModel::onDismissSave,
         )
     }
 
@@ -136,98 +140,46 @@ fun QueryScreen(
                 contentAlignment = Alignment.Center,
             ) {
                 when {
-                    state.isLoading -> Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    isBusy -> Column(horizontalAlignment = Alignment.CenterHorizontally) {
                         CircularProgressIndicator()
                         Spacer(modifier = Modifier.height(12.dp))
                         Text(
-                            text = state.answerNarration ?: "Thinking…",
+                            text = when (state.mode) {
+                                QueryMode.ASK -> state.answerNarration ?: stringResource(R.string.query_thinking)
+                                QueryMode.SUMMARIZE -> stringResource(R.string.query_summarizing)
+                            },
                             textAlign = TextAlign.Center,
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
                     }
                     state.errorMessage != null -> Text(
-                        text = state.errorMessage.orEmpty(),
+                        text = state.errorMessage?.asString().orEmpty(),
                         textAlign = TextAlign.Center,
                         color = MaterialTheme.colorScheme.error,
                     )
-                    state.answer != null -> Column(
-                        modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState()),
-                        verticalArrangement = Arrangement.Top,
-                    ) {
-                        Text(
-                            text = state.answer?.text.orEmpty(),
-                            textAlign = TextAlign.Start,
-                            modifier = Modifier.fillMaxWidth(),
-                        )
-
-                        val citations = state.answer?.citations.orEmpty()
-                        if (citations.isNotEmpty()) {
-                            Spacer(modifier = Modifier.height(12.dp))
-                            FlowRow(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                                verticalArrangement = Arrangement.spacedBy(8.dp),
-                            ) {
-                                citations.forEach { citation ->
-                                    var expanded by remember { mutableStateOf(false) }
-                                    Column {
-                                        AssistChip(
-                                            onClick = { expanded = !expanded },
-                                            label = {
-                                                Text(
-                                                    citationLabel(
-                                                        citation.chunk.documentId,
-                                                        citation.chunk.createdAtMillis,
-                                                    ),
-                                                )
-                                            },
-                                        )
-                                        if (expanded) {
-                                            Surface(
-                                                modifier = Modifier.padding(top = 4.dp),
-                                                shape = RoundedCornerShape(8.dp),
-                                                color = MaterialTheme.colorScheme.surfaceContainerHigh,
-                                            ) {
-                                                Text(
-                                                    text = citation.chunk.text.trimToWordBoundaries(),
-                                                    style = MaterialTheme.typography.bodySmall,
-                                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                                    modifier = Modifier.padding(8.dp),
-                                                )
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                        }
-
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.Center,
-                        ) {
-                            if (state.isSavingNote) {
-                                CircularProgressIndicator(modifier = Modifier.size(24.dp))
-                                state.noteSaveNarration?.let { narration ->
-                                    Text(text = narration, modifier = Modifier.padding(start = 8.dp))
-                                }
-                            } else {
-                                TextButton(onClick = viewModel::saveAsNote) {
-                                    Text("Save as note")
-                                }
-                            }
-                        }
-                    }
-                    else -> Text(
-                        text = "Ask something about Clean Architecture, KMM, or mobile AI security",
-                        textAlign = TextAlign.Center,
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    state.mode == QueryMode.ASK && state.answer != null -> AnswerContent(
+                        state = state,
+                        onSaveAsNote = viewModel::saveAsNote,
                     )
+                    state.mode == QueryMode.SUMMARIZE && state.summary != null -> SummaryContent(
+                        summary = state.summary!!,
+                    )
+                    state.mode == QueryMode.SUMMARIZE && state.summaryNothingFound -> HintText(R.string.query_nothing_found)
+                    state.mode == QueryMode.ASK -> HintText(R.string.query_empty_ask)
+                    else -> HintText(R.string.query_empty_summarize)
                 }
             }
 
-            Spacer(modifier = Modifier.height(16.dp))
+            if (state.mode == QueryMode.SUMMARIZE) {
+                ModelStatusRow(status = state.modelStatus, onDownload = viewModel::onDownloadModel)
+            }
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            ModeSelector(mode = state.mode, onModeSelected = viewModel::onModeSelected)
+
+            Spacer(modifier = Modifier.height(8.dp))
 
             Card(
                 modifier = Modifier.fillMaxWidth(),
@@ -236,7 +188,16 @@ fun QueryScreen(
                 TextField(
                     value = state.query,
                     onValueChange = viewModel::onQueryChanged,
-                    placeholder = { Text("Ask about the knowledge base") },
+                    placeholder = {
+                        Text(
+                            stringResource(
+                                when (state.mode) {
+                                    QueryMode.ASK -> R.string.query_hint_ask
+                                    QueryMode.SUMMARIZE -> R.string.query_hint_summarize
+                                },
+                            ),
+                        )
+                    },
                     modifier = Modifier.fillMaxWidth(),
                     colors = TextFieldDefaults.colors(
                         focusedContainerColor = Color.Transparent,
@@ -251,10 +212,220 @@ fun QueryScreen(
 
             Button(
                 onClick = viewModel::onSubmit,
-                enabled = !state.isLoading,
+                enabled = !isBusy,
                 modifier = Modifier.fillMaxWidth(),
             ) {
-                Text("Ask")
+                Text(
+                    stringResource(
+                        when (state.mode) {
+                            QueryMode.ASK -> R.string.query_action_ask
+                            QueryMode.SUMMARIZE -> R.string.query_action_summarize
+                        },
+                    ),
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun HintText(resId: Int) {
+    Text(
+        text = stringResource(resId),
+        textAlign = TextAlign.Center,
+        style = MaterialTheme.typography.bodyMedium,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+    )
+}
+
+@Composable
+private fun ModeSelector(mode: QueryMode, onModeSelected: (QueryMode) -> Unit) {
+    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        FilterChip(
+            selected = mode == QueryMode.ASK,
+            onClick = { onModeSelected(QueryMode.ASK) },
+            label = { Text(stringResource(R.string.query_mode_ask)) },
+        )
+        FilterChip(
+            selected = mode == QueryMode.SUMMARIZE,
+            onClick = { onModeSelected(QueryMode.SUMMARIZE) },
+            label = { Text(stringResource(R.string.query_mode_summarize)) },
+        )
+    }
+}
+
+@Composable
+private fun SaveNoteDialog(notes: List<String>, onConfirm: () -> Unit, onDismiss: () -> Unit) {
+    // Shows exactly what will be stored, as plain text, before anything is written.
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = {
+            Text(
+                stringResource(
+                    if (notes.size == 1) R.string.query_save_note_title_one else R.string.query_save_note_title_many,
+                ),
+            )
+        },
+        text = {
+            Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
+                notes.forEach { note -> Text(stringResource(R.string.query_note_bullet, note)) }
+            }
+        },
+        confirmButton = { TextButton(onClick = onConfirm) { Text(stringResource(R.string.query_save)) } },
+        dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.query_cancel)) } },
+    )
+}
+
+@Composable
+private fun AnswerContent(state: QueryUiState, onSaveAsNote: () -> Unit) {
+    Column(
+        modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState()),
+        verticalArrangement = Arrangement.Top,
+    ) {
+        Text(
+            text = state.answer?.text.orEmpty(),
+            textAlign = TextAlign.Start,
+            modifier = Modifier.fillMaxWidth(),
+        )
+
+        SourceChips(state.answer?.citations.orEmpty())
+
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.Center,
+        ) {
+            if (state.isSavingNote) {
+                CircularProgressIndicator(modifier = Modifier.size(24.dp))
+                state.noteSaveNarration?.let { narration ->
+                    Text(text = narration, modifier = Modifier.padding(start = 8.dp))
+                }
+            } else {
+                TextButton(onClick = onSaveAsNote) {
+                    Text(stringResource(R.string.query_save_as_note))
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun SummaryContent(summary: NotesSummary) {
+    Column(
+        modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState()),
+        verticalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
+        Card(modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(16.dp)) {
+            Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                EngineBadge(summary.engine)
+                summary.bullets.forEach { bullet ->
+                    Text(stringResource(R.string.query_note_bullet, bullet))
+                }
+            }
+        }
+        summary.fallbackReason?.let { reason -> FallbackNote(reason) }
+        SourceChips(summary.sources)
+    }
+}
+
+@Composable
+private fun EngineBadge(engine: SummaryEngine) {
+    Surface(
+        shape = RoundedCornerShape(50),
+        color = MaterialTheme.colorScheme.secondaryContainer,
+    ) {
+        Text(
+            text = stringResource(
+                when (engine) {
+                    SummaryEngine.ON_DEVICE -> R.string.query_badge_on_device
+                    SummaryEngine.CLOUD -> R.string.query_badge_cloud
+                },
+            ),
+            style = MaterialTheme.typography.labelMedium,
+            color = MaterialTheme.colorScheme.onSecondaryContainer,
+            modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp),
+        )
+    }
+}
+
+@Composable
+private fun FallbackNote(reason: FallbackReason) {
+    Text(
+        text = stringResource(reason.toStringRes()),
+        style = MaterialTheme.typography.bodySmall,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+    )
+}
+
+@Composable
+private fun ModelStatusRow(status: ModelStatus, onDownload: () -> Unit) {
+    when (status) {
+        ModelStatus.Unknown -> Unit
+        ModelStatus.Checking -> StatusText(stringResource(R.string.query_model_checking))
+        ModelStatus.Ready -> StatusText(stringResource(R.string.query_model_ready))
+        ModelStatus.Downloadable -> Row(verticalAlignment = Alignment.CenterVertically) {
+            StatusText(stringResource(R.string.query_model_not_downloaded))
+            TextButton(onClick = onDownload) { Text(stringResource(R.string.query_model_download)) }
+        }
+        is ModelStatus.Downloading -> Column {
+            StatusText(stringResource(R.string.query_model_downloading, status.percent))
+            LinearProgressIndicator(progress = { status.percent / 100f }, modifier = Modifier.fillMaxWidth())
+        }
+        is ModelStatus.Unavailable -> StatusText(
+            stringResource(
+                if (status.reason == FallbackReason.SERVICE_UNAVAILABLE) {
+                    R.string.query_model_aicore_off
+                } else {
+                    R.string.query_model_unavailable
+                },
+            ),
+        )
+    }
+}
+
+@Composable
+private fun StatusText(text: String) {
+    Text(
+        text = text,
+        style = MaterialTheme.typography.bodySmall,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+    )
+}
+
+/** Source chips; tapping one expands the chunk text it came from. */
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun SourceChips(citations: List<RetrievedChunk>) {
+    if (citations.isEmpty()) return
+
+    Spacer(modifier = Modifier.height(12.dp))
+    FlowRow(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        citations.forEach { citation ->
+            var expanded by remember { mutableStateOf(false) }
+            Column {
+                AssistChip(
+                    onClick = { expanded = !expanded },
+                    label = {
+                        Text(citationLabel(citation.chunk.documentId, citation.chunk.createdAtMillis))
+                    },
+                )
+                if (expanded) {
+                    Surface(
+                        modifier = Modifier.padding(top = 4.dp),
+                        shape = RoundedCornerShape(8.dp),
+                        color = MaterialTheme.colorScheme.surfaceContainerHigh,
+                    ) {
+                        Text(
+                            text = citation.chunk.text.trimToWordBoundaries(),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.padding(8.dp),
+                        )
+                    }
+                }
             }
         }
     }

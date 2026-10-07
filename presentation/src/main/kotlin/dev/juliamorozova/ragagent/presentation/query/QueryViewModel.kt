@@ -3,9 +3,16 @@ package dev.juliamorozova.ragagent.presentation.query
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
+import dev.juliamorozova.ragagent.domain.model.FallbackReason
+import dev.juliamorozova.ragagent.domain.summary.OnDeviceAvailability
+import dev.juliamorozova.ragagent.domain.summary.OnDeviceSummarizationException
+import dev.juliamorozova.ragagent.domain.summary.OnDeviceSummarizer
 import dev.juliamorozova.ragagent.domain.usecase.GenerateAnswerUseCase
 import dev.juliamorozova.ragagent.domain.usecase.ProposeNotesFromChatUseCase
 import dev.juliamorozova.ragagent.domain.usecase.SaveNoteUseCase
+import dev.juliamorozova.ragagent.domain.usecase.SummarizeNotesUseCase
+import dev.juliamorozova.ragagent.presentation.R
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -17,22 +24,38 @@ import javax.inject.Inject
 
 /** Maps a raw network/HTTP failure to copy safe to show the user — never [Throwable.message],
  *  which can be a raw exception string (stack internals, host names). */
-private fun Throwable.toUserMessage(): String = when {
-    this is HttpException && code() == 429 -> "Rate limited, wait a moment and try again"
-    this is IOException -> "Request timed out, try again"
-    else -> "Something went wrong"
+private fun Throwable.toUserMessage(): UiMessage = UiMessage(
+    when {
+        this is HttpException && code() == 429 -> R.string.query_error_rate_limited
+        this is IOException -> R.string.query_error_timeout
+        else -> R.string.query_error_generic
+    },
+)
+
+private fun savedMessage(notes: List<String>): UiMessage =
+    if (notes.size == 1) {
+        UiMessage(R.string.query_saved_one, listOf(notes.single()))
+    } else {
+        UiMessage(R.string.query_saved_many, listOf(notes.size))
+    }
+
+private fun OnDeviceAvailability.toModelStatus(): ModelStatus = when (this) {
+    OnDeviceAvailability.Available -> ModelStatus.Ready
+    OnDeviceAvailability.Downloadable -> ModelStatus.Downloadable
+    OnDeviceAvailability.Downloading -> ModelStatus.Downloading(percent = 0)
+    is OnDeviceAvailability.Unavailable -> ModelStatus.Unavailable(reason)
 }
 
-private const val NOTHING_TO_SAVE_MESSAGE = "Nothing new to save"
-
-private fun savedMessage(notes: List<String>): String =
-    if (notes.size == 1) "Saved: ${notes.single()}" else "Saved ${notes.size} notes"
+private fun Throwable.toUnavailable(): ModelStatus.Unavailable =
+    ModelStatus.Unavailable((this as? OnDeviceSummarizationException)?.reason ?: FallbackReason.UNKNOWN)
 
 @HiltViewModel
 class QueryViewModel @Inject constructor(
     private val generateAnswer: GenerateAnswerUseCase,
     private val proposeNotes: ProposeNotesFromChatUseCase,
     private val saveNote: SaveNoteUseCase,
+    private val summarizeNotes: SummarizeNotesUseCase,
+    private val onDeviceSummarizer: OnDeviceSummarizer,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(QueryUiState())
@@ -42,7 +65,22 @@ class QueryViewModel @Inject constructor(
         _uiState.update { it.copy(query = query) }
     }
 
+    fun onModeSelected(mode: QueryMode) {
+        _uiState.update { it.copy(mode = mode, errorMessage = null) }
+        if (mode == QueryMode.SUMMARIZE && _uiState.value.modelStatus == ModelStatus.Unknown) {
+            viewModelScope.launch { loadModelStatus() }
+        }
+    }
+
+    /** The action button: asks or summarizes depending on the selected mode. */
     fun onSubmit() {
+        when (_uiState.value.mode) {
+            QueryMode.ASK -> ask()
+            QueryMode.SUMMARIZE -> summarize()
+        }
+    }
+
+    private fun ask() {
         val query = _uiState.value.query
         if (query.isBlank()) return
 
@@ -66,6 +104,60 @@ class QueryViewModel @Inject constructor(
         }
     }
 
+    private fun summarize() {
+        val topic = _uiState.value.query
+        if (topic.isBlank()) return
+
+        viewModelScope.launch {
+            _uiState.update {
+                it.copy(isSummarizing = true, errorMessage = null, summary = null, summaryNothingFound = false)
+            }
+            runCatching { summarizeNotes(topic) }
+                .onSuccess { summary ->
+                    _uiState.update {
+                        it.copy(isSummarizing = false, summary = summary, summaryNothingFound = summary == null)
+                    }
+                }
+                .onFailure { error ->
+                    _uiState.update { it.copy(isSummarizing = false, errorMessage = error.toUserMessage()) }
+                }
+        }
+    }
+
+    /** Downloads the on-device model when it is downloadable, reporting progress in [QueryUiState.modelStatus]. */
+    fun onDownloadModel() {
+        if (_uiState.value.modelStatus != ModelStatus.Downloadable) return
+
+        viewModelScope.launch {
+            setModelStatus(ModelStatus.Downloading(percent = 0))
+            try {
+                onDeviceSummarizer.downloadModel { percent -> setModelStatus(ModelStatus.Downloading(percent)) }
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                setModelStatus(e.toUnavailable())
+                return@launch
+            }
+            loadModelStatus()
+        }
+    }
+
+    private suspend fun loadModelStatus() {
+        setModelStatus(ModelStatus.Checking)
+        val status = try {
+            onDeviceSummarizer.availability().toModelStatus()
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            e.toUnavailable()
+        }
+        setModelStatus(status)
+    }
+
+    private fun setModelStatus(status: ModelStatus) {
+        _uiState.update { it.copy(modelStatus = status) }
+    }
+
     /** Asks the agent what is worth saving. Nothing is stored yet: the proposals go to a
      *  confirmation dialog ([QueryUiState.pendingNotes]) and are stored only by [onConfirmSave]. */
     fun saveAsNote() {
@@ -85,19 +177,11 @@ class QueryViewModel @Inject constructor(
                             isSavingNote = false,
                             noteSaveNarration = null,
                             pendingNotes = notes,
-                            noteSaveMessage = if (notes.isEmpty()) NOTHING_TO_SAVE_MESSAGE else null,
+                            noteSaveMessage = if (notes.isEmpty()) UiMessage(R.string.query_nothing_to_save) else null,
                         )
                     }
                 }
-                .onFailure { error ->
-                    _uiState.update {
-                        it.copy(
-                            isSavingNote = false,
-                            noteSaveNarration = null,
-                            noteSaveMessage = "Failed to save: ${error.toUserMessage()}",
-                        )
-                    }
-                }
+                .onFailure { error -> failSave(error) }
         }
     }
 
@@ -112,14 +196,17 @@ class QueryViewModel @Inject constructor(
                 .onSuccess {
                     _uiState.update { it.copy(isSavingNote = false, noteSaveMessage = savedMessage(notes)) }
                 }
-                .onFailure { error ->
-                    _uiState.update {
-                        it.copy(
-                            isSavingNote = false,
-                            noteSaveMessage = "Failed to save: ${error.toUserMessage()}",
-                        )
-                    }
-                }
+                .onFailure { error -> failSave(error) }
+        }
+    }
+
+    private fun failSave(error: Throwable) {
+        _uiState.update {
+            it.copy(
+                isSavingNote = false,
+                noteSaveNarration = null,
+                noteSaveMessage = UiMessage(R.string.query_failed_to_save, listOf(error.toUserMessage())),
+            )
         }
     }
 

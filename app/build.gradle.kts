@@ -48,8 +48,9 @@ dependencies {
     implementation(libs.kotlinx.coroutines.android)
     implementation(libs.androidx.activity.compose)
 
-    // SPIKE (branch nano): ML Kit GenAI Summarization, on-device Gemini Nano.
-    implementation(libs.mlkit.genai.summarization)
+    // The Nano experiments screen (debug source set) talks to ML Kit directly; the app itself goes
+    // through the rag module, which owns the dependency.
+    debugImplementation(libs.mlkit.genai.summarization)
 
     implementation(libs.hilt.android)
     ksp(libs.hilt.compiler)
