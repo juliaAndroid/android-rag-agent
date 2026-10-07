@@ -13,6 +13,8 @@ import dev.juliamorozova.ragagent.domain.repository.VectorStoreRepository
 import dev.juliamorozova.ragagent.domain.usecase.IngestDocumentUseCase
 import dev.juliamorozova.ragagent.domain.usecase.ProposeNotesFromChatUseCase
 import dev.juliamorozova.ragagent.domain.usecase.SaveNoteUseCase
+import dev.juliamorozova.ragagent.domain.summary.CloudSummarizer
+import dev.juliamorozova.ragagent.rag.agent.ClaudeSummarizer
 import dev.juliamorozova.ragagent.rag.agent.DefaultGenerateAnswerUseCase
 import dev.juliamorozova.ragagent.rag.agent.DefaultProposeNotesFromChatUseCase
 import dev.juliamorozova.ragagent.rag.agent.DefaultSaveNoteUseCase
@@ -71,4 +73,8 @@ abstract class RagModule {
     @Binds
     @Singleton
     abstract fun bindSaveNoteUseCase(impl: DefaultSaveNoteUseCase): SaveNoteUseCase
+
+    @Binds
+    @Singleton
+    abstract fun bindCloudSummarizer(impl: ClaudeSummarizer): CloudSummarizer
 }

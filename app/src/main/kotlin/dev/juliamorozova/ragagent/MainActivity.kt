@@ -17,7 +17,8 @@ class MainActivity : ComponentActivity() {
         setContent {
             RagAgentTheme {
                 Surface {
-                    QueryScreen()
+                    // SPIKE (branch nano): swap back to QueryScreen() after the experiment.
+                    NanoSpikeScreen()
                 }
             }
         }
