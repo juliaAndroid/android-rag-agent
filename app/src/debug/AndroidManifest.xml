@@ -1,16 +1,32 @@
-<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
 
     <application>
+        <!-- Long-press the app icon in a debug build to open the experiment screens below. -->
+        <activity
+            android:name=".MainActivity"
+            tools:node="merge">
+            <meta-data
+                android:name="android.app.shortcuts"
+                android:resource="@xml/debug_shortcuts" />
+        </activity>
+
         <!--
-            Debug-only Nano experiments. Deliberately has no LAUNCHER filter: with two launcher
-            activities Android Studio's "Run" may start this one instead of MainActivity. Exported so
-            it can be started from a shell:
+            Debug-only Nano screens. Deliberately no LAUNCHER filter: with two launcher activities
+            Android Studio's "Run" may start one of these instead of MainActivity. Exported so they can
+            also be started from a shell:
               adb shell am start -n dev.juliamorozova.ragagent/.NanoSpikeActivity
+              adb shell am start -n dev.juliamorozova.ragagent/.NanoEvalActivity
         -->
         <activity
             android:name=".NanoSpikeActivity"
             android:exported="true"
             android:label="Nano spike"
+            android:theme="@style/Theme.RagAgent" />
+        <activity
+            android:name=".NanoEvalActivity"
+            android:exported="true"
+            android:label="Nano eval"
             android:theme="@style/Theme.RagAgent" />
     </application>
 

@@ -177,6 +177,55 @@ class DefaultSummarizeNotesUseCaseTest {
     }
 
     @Test
+    fun `selectChunks only selects and does not summarize`() = runTest {
+        retrieve.results = listOf(chunk("c1", "a.md", 0, 800, 0.9f))
+
+        val selected = useCase.selectChunks("topic")
+
+        assertThat(selected.map { it.chunk.id }).containsExactly("c1")
+        assertThat(onDevice.calls).isEqualTo(0)
+        assertThat(cloud.lastText).isNull()
+    }
+
+    @Test
+    fun `selectChunks of a blank topic is empty and does not search`() = runTest {
+        assertThat(useCase.selectChunks("  ")).isEmpty()
+        assertThat(retrieve.lastQuery).isNull()
+    }
+
+    @Test
+    fun `summarize uses exactly the given chunks in the given order and does not search`() = runTest {
+        val given = listOf(
+            chunk("z", "z.md", 0, 500, 0.1f, fill = 'Z'),
+            chunk("a", "a.md", 0, 500, 0.9f, fill = 'A'),
+        )
+
+        val summary = useCase.summarize(given)!!
+
+        assertThat(retrieve.lastQuery).isNull()
+        assertThat(onDevice.lastText).isEqualTo("Z".repeat(500) + "\n\n" + "A".repeat(500))
+        assertThat(summary.sources).isEqualTo(given)
+    }
+
+    @Test
+    fun `summarize of no chunks returns null without calling a model`() = runTest {
+        assertThat(useCase.summarize(emptyList())).isNull()
+        assertThat(onDevice.calls).isEqualTo(0)
+    }
+
+    @Test
+    fun `the same chunks can be summarized by both engines`() = runTest {
+        val given = listOf(chunk("c1", "a.md", 0, 800, 0.9f))
+
+        val cloudSummary = useCase.summarize(given, RoutingMode.CLOUD_ONLY)!!
+        val nanoSummary = useCase.summarize(given, RoutingMode.ON_DEVICE_ONLY)!!
+
+        assertThat(cloudSummary.engine).isEqualTo(SummaryEngine.CLOUD)
+        assertThat(nanoSummary.engine).isEqualTo(SummaryEngine.ON_DEVICE)
+        assertThat(cloudSummary.sources).isEqualTo(nanoSummary.sources)
+    }
+
+    @Test
     fun `a search failure is not swallowed`() = runTest {
         retrieve.error = IllegalStateException("network")
 

@@ -29,10 +29,13 @@ enum class FallbackReason {
  * @property fallbackReason Set only when [engine] is [SummaryEngine.CLOUD] because the
  * on-device model was tried or ruled out first; null when the cloud was chosen directly.
  * @property sources The retrieved chunks the summary was built from, for citation display.
+ * @property durationMillis How long the summarizer that produced [bullets] took, excluding retrieval
+ * and any failed on-device attempt before a fallback.
  */
 data class NotesSummary(
     val bullets: List<String>,
     val engine: SummaryEngine,
     val fallbackReason: FallbackReason? = null,
     val sources: List<RetrievedChunk> = emptyList(),
+    val durationMillis: Long = 0,
 )

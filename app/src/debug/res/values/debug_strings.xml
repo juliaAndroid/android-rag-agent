@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="debug_shortcut_nano_spike">Nano spike</string>
+    <string name="debug_shortcut_nano_eval">Nano eval</string>
+</resources>

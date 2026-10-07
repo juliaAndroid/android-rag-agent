@@ -216,6 +216,34 @@ class SummaryRouterTest {
         assertThat(onDevice.availabilityCalls).isEqualTo(0)
     }
 
+    /** A clock that moves forward 7 ms every time it is read, so one timed call measures exactly 7 ms. */
+    private fun steppingClock(): () -> Long {
+        var now = 0L
+        return { now.also { now += 7_000_000L } }
+    }
+
+    @Test
+    fun `an on-device summary reports how long the model took`() = runTest {
+        val timed = SummaryRouter(onDevice, cloud, nanoClock = steppingClock())
+
+        assertThat(timed.summarize(text, sources).durationMillis).isEqualTo(7)
+    }
+
+    @Test
+    fun `a cloud summary reports how long the cloud call took`() = runTest {
+        val timed = SummaryRouter(onDevice, cloud, nanoClock = steppingClock())
+
+        assertThat(timed.summarize(text, sources, RoutingMode.CLOUD_ONLY).durationMillis).isEqualTo(7)
+    }
+
+    @Test
+    fun `a fallback reports only the cloud call, not the failed on-device attempt`() = runTest {
+        onDevice.availability = OnDeviceAvailability.Unavailable(FallbackReason.UNSUPPORTED_DEVICE)
+        val timed = SummaryRouter(onDevice, cloud, nanoClock = steppingClock())
+
+        assertThat(timed.summarize(text, sources).durationMillis).isEqualTo(7)
+    }
+
     @Test
     fun `ON_DEVICE_ONLY reports the failure instead of falling back`() = runTest {
         onDevice.failWith(FallbackReason.GENERATION_FAILED)

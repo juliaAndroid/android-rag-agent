@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<shortcuts xmlns:android="http://schemas.android.com/apk/res/android">
+    <shortcut
+        android:shortcutId="nano_spike"
+        android:enabled="true"
+        android:shortcutShortLabel="@string/debug_shortcut_nano_spike"
+        android:shortcutLongLabel="@string/debug_shortcut_nano_spike">
+        <intent
+            android:action="android.intent.action.VIEW"
+            android:targetClass="dev.juliamorozova.ragagent.NanoSpikeActivity"
+            android:targetPackage="dev.juliamorozova.ragagent" />
+    </shortcut>
+    <shortcut
+        android:shortcutId="nano_eval"
+        android:enabled="true"
+        android:shortcutShortLabel="@string/debug_shortcut_nano_eval"
+        android:shortcutLongLabel="@string/debug_shortcut_nano_eval">
+        <intent
+            android:action="android.intent.action.VIEW"
+            android:targetClass="dev.juliamorozova.ragagent.NanoEvalActivity"
+            android:targetPackage="dev.juliamorozova.ragagent" />
+    </shortcut>
+</shortcuts>

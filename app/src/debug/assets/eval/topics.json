@@ -1,0 +1,131 @@
+[
+  {
+    "id": "ca-modules",
+    "topic": "Clean Architecture module boundaries",
+    "keyPoints": [
+      "Modules are split into domain, data, presentation and app",
+      "Dependencies point one way: presentation and data depend on domain, and domain has no Android dependency",
+      "Brand customization lives in app-level DI wiring, not in if-branches inside business logic"
+    ]
+  },
+  {
+    "id": "ca-whitelabel-problem",
+    "topic": "coupling problems in white-label apps",
+    "keyPoints": [
+      "A UI tweak for one brand leaks into shared business logic",
+      "A quick fix in the data layer ends up being depended on by a ViewModel",
+      "Changing one brand's behavior then requires regression-testing all brands"
+    ]
+  },
+  {
+    "id": "ca-tradeoffs",
+    "topic": "trade-offs of strict module boundaries",
+    "keyPoints": [
+      "The compiler enforces the boundary, so a brand-specific bug cannot silently break another brand",
+      "It costs more upfront ceremony: interfaces and DI bindings",
+      "It pays off as soon as there are two or more cities or service variants"
+    ]
+  },
+  {
+    "id": "ca-ticketing-app",
+    "topic": "the ticketing app with several transport services",
+    "keyPoints": [
+      "One app bundled bike rental, car parking and public transport, and some cities also added boat rental",
+      "Each city had its own branding on top of the per-service differences",
+      "One interface per capability, with a separate implementation per service type and per city"
+    ]
+  },
+  {
+    "id": "kmm-framework",
+    "topic": "what to share in Kotlin Multiplatform",
+    "keyPoints": [
+      "Share code when the business rule is identical across platforms and an abstraction costs less than two implementations",
+      "Do not share where a platform difference is load-bearing",
+      "UI-adjacent logic is cheaper to write twice"
+    ]
+  },
+  {
+    "id": "kmm-shared",
+    "topic": "what was shared across platforms",
+    "keyPoints": [
+      "Backend communication end to end: request handling, response parsing and mapping into domain models",
+      "A platform just calls a shared function and gets back a ready-to-use model",
+      "No parsing or mapping logic was duplicated per platform"
+    ]
+  },
+  {
+    "id": "kmm-platform-specific",
+    "topic": "what stayed platform-specific in Kotlin Multiplatform",
+    "keyPoints": [
+      "All UI (Compose and SwiftUI)",
+      "Local storage and the database",
+      "Anything touching the system: permissions, platform APIs, background work scheduling"
+    ]
+  },
+  {
+    "id": "kmm-expect-actual",
+    "topic": "expect/actual maintenance cost",
+    "keyPoints": [
+      "expect/actual declarations are a real maintenance surface",
+      "A shared interface with a platform-specific implementation can drift out of sync between iOS and Android",
+      "Mitigated by tests written once against the shared logic and run on both platform targets"
+    ]
+  },
+  {
+    "id": "masvs-overview",
+    "topic": "AI in PR security review against OWASP MASVS",
+    "keyPoints": [
+      "MASVS defines verification requirements across categories, and manual checking of every PR does not scale",
+      "A checklist-per-category approach was handed to Copilot to run during PR review",
+      "The output is a risk assessment of candidate findings, not an automatic approve or block gate"
+    ]
+  },
+  {
+    "id": "masvs-findings",
+    "topic": "findings from the MASVS security audit",
+    "keyPoints": [
+      "One audit pass surfaced 10 real findings across the applicable MASVS categories",
+      "Critical: JWT access, refresh and ID tokens stored in plaintext SharedPreferences",
+      "High: the ID token is never invalidated on logout"
+    ]
+  },
+  {
+    "id": "masvs-human-in-loop",
+    "topic": "why AI security findings need a human reviewer",
+    "keyPoints": [
+      "Findings are candidates for a human to confirm, not ground truth",
+      "False positives that block merges erode trust, and false negatives on security are unacceptable",
+      "Every merge or apply decision went through a human, and fixes were a separate follow-up task"
+    ]
+  },
+  {
+    "id": "masvs-false-positives",
+    "topic": "false positives in the security scan",
+    "keyPoints": [
+      "Three false positives were flagged, all with the same root cause: a hardcoded-credential pattern matching token-like literals",
+      "The literals were in test fixtures and mocks, for example a tok_123 payment token in a JUnit test",
+      "Mitigated by excluding test source sets from the scanned scope"
+    ]
+  },
+  {
+    "id": "cross-domain-pure-kotlin",
+    "topic": "why the domain module has no Android dependency",
+    "keyPoints": [
+      "domain is plain Kotlin (kotlin.jvm) with no Android Gradle plugin",
+      "Business rules can be unit-tested on the plain JVM",
+      "It stays portable if the Kotlin Multiplatform goal happens"
+    ]
+  },
+  {
+    "id": "off-topic-gradle",
+    "topic": "Gradle build caching and the configuration cache",
+    "keyPoints": [],
+    "note": "Not in the knowledge base: a faithful summary must not invent facts."
+  },
+  {
+    "id": "off-topic-push",
+    "topic": "setting up iOS push notifications",
+    "keyPoints": [],
+    "note": "Not in the knowledge base: a faithful summary must not invent facts."
+  }
+]

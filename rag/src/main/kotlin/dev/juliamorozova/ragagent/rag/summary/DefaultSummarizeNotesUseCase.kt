@@ -24,15 +24,19 @@ class DefaultSummarizeNotesUseCase @Inject constructor(
     private val onDevice: OnDeviceSummarizer,
 ) : SummarizeNotesUseCase {
 
-    override suspend fun invoke(topic: String, mode: RoutingMode): NotesSummary? {
-        if (topic.isBlank()) return null
+    override suspend fun invoke(topic: String, mode: RoutingMode): NotesSummary? =
+        summarize(selectChunks(topic), mode)
 
+    override suspend fun selectChunks(topic: String): List<RetrievedChunk> {
+        if (topic.isBlank()) return emptyList()
         val retrieved = retrieveRelevantChunks(topic.trim(), TOP_K)
-        val selected = selectWithinLimit(retrieved, onDevice.maxInputChars)
-        if (selected.isEmpty()) return null
+        return selectWithinLimit(retrieved, onDevice.maxInputChars)
+    }
 
-        val text = selected.joinToString(SEPARATOR) { it.chunk.text }
-        return router.summarize(text, selected, mode)
+    override suspend fun summarize(chunks: List<RetrievedChunk>, mode: RoutingMode): NotesSummary? {
+        if (chunks.isEmpty()) return null
+        val text = chunks.joinToString(SEPARATOR) { it.chunk.text }
+        return router.summarize(text, chunks, mode)
     }
 
     /**

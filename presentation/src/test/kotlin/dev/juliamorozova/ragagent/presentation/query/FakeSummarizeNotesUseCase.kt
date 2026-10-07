@@ -1,6 +1,7 @@
 package dev.juliamorozova.ragagent.presentation.query
 
 import dev.juliamorozova.ragagent.domain.model.NotesSummary
+import dev.juliamorozova.ragagent.domain.model.RetrievedChunk
 import dev.juliamorozova.ragagent.domain.summary.RoutingMode
 import dev.juliamorozova.ragagent.domain.usecase.SummarizeNotesUseCase
 
@@ -17,4 +18,10 @@ class FakeSummarizeNotesUseCase(
         if (shouldFail) error("Forced failure")
         return result
     }
+
+    // The ViewModel only uses invoke(); the split steps exist for the evaluation tooling.
+    override suspend fun selectChunks(topic: String): List<RetrievedChunk> = error("Not used by the ViewModel")
+
+    override suspend fun summarize(chunks: List<RetrievedChunk>, mode: RoutingMode): NotesSummary? =
+        error("Not used by the ViewModel")
 }

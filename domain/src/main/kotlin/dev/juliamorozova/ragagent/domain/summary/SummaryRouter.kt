@@ -19,13 +19,14 @@ class SummaryRouter(
     private val onDevice: OnDeviceSummarizer,
     private val cloud: CloudSummarizer,
     private val busyRetryDelaysMillis: List<Long> = listOf(500L, 1_000L),
+    private val nanoClock: () -> Long = System::nanoTime,
 ) {
 
     /** Set once the device is known not to support the on-device model, so later calls skip it. */
     private var permanentReason: FallbackReason? = null
 
     private sealed interface Attempt {
-        data class Succeeded(val bullets: List<String>) : Attempt
+        data class Succeeded(val bullets: List<String>, val durationMillis: Long) : Attempt
         data class Failed(val reason: FallbackReason, val cause: Throwable? = null) : Attempt
     }
 
@@ -42,7 +43,12 @@ class SummaryRouter(
         if (mode == RoutingMode.CLOUD_ONLY) return fromCloud(text, sources, reason = null)
 
         return when (val attempt = attemptOnDevice(text)) {
-            is Attempt.Succeeded -> NotesSummary(attempt.bullets, SummaryEngine.ON_DEVICE, sources = sources)
+            is Attempt.Succeeded -> NotesSummary(
+                bullets = attempt.bullets,
+                engine = SummaryEngine.ON_DEVICE,
+                sources = sources,
+                durationMillis = attempt.durationMillis,
+            )
             is Attempt.Failed -> {
                 if (mode == RoutingMode.ON_DEVICE_ONLY) {
                     throw OnDeviceSummarizationException(attempt.reason, cause = attempt.cause)
@@ -52,8 +58,19 @@ class SummaryRouter(
         }
     }
 
-    private suspend fun fromCloud(text: String, sources: List<RetrievedChunk>, reason: FallbackReason?) =
-        NotesSummary(cloud.summarize(text), SummaryEngine.CLOUD, fallbackReason = reason, sources = sources)
+    private suspend fun fromCloud(text: String, sources: List<RetrievedChunk>, reason: FallbackReason?): NotesSummary {
+        val start = nanoClock()
+        val bullets = cloud.summarize(text)
+        return NotesSummary(
+            bullets = bullets,
+            engine = SummaryEngine.CLOUD,
+            fallbackReason = reason,
+            sources = sources,
+            durationMillis = millisSince(start),
+        )
+    }
+
+    private fun millisSince(startNanos: Long): Long = (nanoClock() - startNanos) / 1_000_000
 
     private suspend fun attemptOnDevice(text: String): Attempt {
         permanentReason?.let { return Attempt.Failed(it) }
@@ -78,7 +95,9 @@ class SummaryRouter(
         var retries = 0
         while (true) {
             try {
-                return Attempt.Succeeded(onDevice.summarize(text))
+                val start = nanoClock()
+                val bullets = onDevice.summarize(text)
+                return Attempt.Succeeded(bullets, millisSince(start))
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
