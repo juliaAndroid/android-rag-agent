@@ -79,18 +79,3 @@ example of a category-specific blind spot in a generic scan.
   specific, well-behaved categories (e.g. Code Quality, pattern-verifiable
   Storage checks) builds up, while categories like Privacy that need semantic
   judgment keep a human as the final call regardless.
-
-## Why this belongs in an AI Architect conversation
-
-This is the strongest material in this whole portfolio for an Architect-angle
-question like "where should an LLM sit in a security-sensitive workflow, and
-where shouldn't it": real production experience with the trade-off between
-recall (catching more) and reviewer trust (not crying wolf), with a human
-kept in the loop for the actual security-relevant decision — and a concrete
-view of which categories are safe to eventually loosen that gate on, and
-which (semantic/privacy judgment) aren't.
-
-## Status
-
-This file is also the seed for the standalone security write-up planned for
-days 17-18 — filling in the `[TODO]`s here does double duty.

@@ -54,10 +54,12 @@ class NanoEvalActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+        // Optional automation for shell use: adb shell am start -n .../.NanoEvalActivity --es auto prepare,claude
+        val auto = intent.getStringExtra("auto")
         setContent {
             RagAgentTheme {
                 Surface {
-                    NanoEvalScreen(summarizeNotes, onDevice)
+                    NanoEvalScreen(summarizeNotes, onDevice, auto)
                 }
             }
         }
@@ -66,7 +68,7 @@ class NanoEvalActivity : ComponentActivity() {
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-private fun NanoEvalScreen(summarizeNotes: SummarizeNotesUseCase, onDevice: OnDeviceSummarizer) {
+private fun NanoEvalScreen(summarizeNotes: SummarizeNotesUseCase, onDevice: OnDeviceSummarizer, auto: String?) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val clipboard = LocalClipboardManager.current
@@ -83,6 +85,29 @@ private fun NanoEvalScreen(summarizeNotes: SummarizeNotesUseCase, onDevice: OnDe
     LaunchedEffect(Unit) {
         log += "Device: ${Build.MANUFACTURER} ${Build.MODEL}, API ${Build.VERSION.SDK_INT}"
         log += "Files: ${runner.outputPath}"
+    }
+
+    // Runs the steps named in the "auto" extra (prepare, claude, nano, reset) one after another.
+    LaunchedEffect(auto) {
+        if (auto == null) return@LaunchedEffect
+        running = true
+        try {
+            for (step in auto.split(",").map { it.trim() }) {
+                log += "--- auto: $step"
+                when (step) {
+                    "prepare" -> runner.prepareChunks()
+                    "claude" -> runner.run(EvalRunner.Engine.CLAUDE)
+                    "nano" -> runner.run(EvalRunner.Engine.NANO)
+                    "reset" -> runner.reset()
+                    else -> log += "unknown step: $step"
+                }
+            }
+            log += "auto done"
+        } catch (e: Throwable) {
+            log += "ERROR ${e::class.simpleName}: ${e.message}"
+        } finally {
+            running = false
+        }
     }
 
     fun launchTask(label: String, block: suspend () -> Unit) {

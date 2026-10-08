@@ -38,12 +38,33 @@ flowchart LR
 | `presentation` | Compose screen and ViewModel. All user-facing text lives in `strings.xml`. |
 | `app` | Entry point and Hilt wiring. The debug build also has two experiment screens (see below). |
 
+### Indexing, Ask and saving a note
+
+```mermaid
+flowchart LR
+    subgraph index [Indexing]
+        F[Knowledge-base files] --> CH[Chunker<br/>800 characters, 120 overlap]
+        CH --> EM[Embeddings<br/>Voyage through the proxy]
+        EM --> DB[(Room vector store)]
+    end
+    subgraph ask [Ask]
+        Q[Question] --> AG[Claude agent loop]
+        AG -->|retrieve_context tool| RT[Embed the question,<br/>find the nearest chunks]
+        RT --> DB
+        RT --> AG
+        AG --> ANS[Answer and sources]
+    end
+    ANS --> SV[Save as note]
+    SV --> CF{User confirms<br/>the exact text}
+    CF -->|Save| EM
+```
+
 ### Summarize flow
 
 ```mermaid
 flowchart TD
     T[Topic] --> E[Embed the topic, find the nearest chunks]
-    E --> S[Keep the best chunks that fit 7860 characters]
+    E --> S[Keep up to 5 best chunks of the best-matching note,<br/>within 7860 characters]
     S --> Q{On-device model ready<br/>and input 400 to 7860 characters?}
     Q -->|yes| N[Gemini Nano summary]
     Q -->|no| C[Claude summary through the proxy]
