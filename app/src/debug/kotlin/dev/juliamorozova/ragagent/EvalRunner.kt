@@ -10,13 +10,22 @@ import dev.juliamorozova.ragagent.domain.summary.OnDeviceSummarizer
 import dev.juliamorozova.ragagent.domain.summary.RoutingMode
 import dev.juliamorozova.ragagent.domain.usecase.SummarizeNotesUseCase
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.delay
 import org.json.JSONArray
 import org.json.JSONObject
 import java.io.File
 import java.time.Instant
 
-/** Each topic is summarized this many times per engine, because model output is not deterministic. */
-private const val REPEATS = 3
+/**
+ * Bumped whenever how chunks are chosen changes, so cached chunks and results of an older rule are never
+ * mixed with new ones (the files of the previous version stay untouched).
+ * v1: the 7 best chunks of any notes. v2: the best chunks of the single best-matching note, at most 5.
+ */
+private const val EVAL_VERSION = "v2"
+
+/** How often and how many times to retry a busy on-device model before giving up on a run. */
+private const val BUSY_RETRY_MS = 3_000L
+private const val MAX_BUSY_RETRIES = 8
 
 /** Personal chat notes would change what retrieval returns, so they stay out of the evaluation. */
 private const val CHAT_NOTE_PREFIX = "chat-note-"
@@ -35,14 +44,18 @@ class EvalRunner(
     private val log: (String) -> Unit,
 ) {
 
-    enum class Engine(val key: String, val mode: RoutingMode) {
-        CLAUDE("claude", RoutingMode.CLOUD_ONLY),
-        NANO("nano", RoutingMode.ON_DEVICE_ONLY),
+    /**
+     * @param repeats Runs per topic. Claude's output varies between runs, so it gets three; the first
+     * evaluation showed the on-device model returning word-for-word identical text each time, so one is enough.
+     */
+    enum class Engine(val key: String, val mode: RoutingMode, val repeats: Int) {
+        CLAUDE("claude", RoutingMode.CLOUD_ONLY, repeats = 3),
+        NANO("nano", RoutingMode.ON_DEVICE_ONLY, repeats = 1),
     }
 
     private val directory: File get() = requireNotNull(context.getExternalFilesDir(null))
-    private val chunksFile: File get() = File(directory, "eval-chunks.json")
-    private val resultsFile: File get() = File(directory, "eval-results.json")
+    private val chunksFile: File get() = File(directory, "eval-chunks-$EVAL_VERSION.json")
+    private val resultsFile: File get() = File(directory, "eval-results-$EVAL_VERSION.json")
 
     val outputPath: String get() = directory.absolutePath
 
@@ -83,16 +96,19 @@ class EvalRunner(
 
         if (engine == Engine.NANO) {
             // The first on-device call pays for loading the model; keep it out of the timings.
-            val firstChunks = chunksOf(stored, topics.getJSONObject(0).getString("id"))
-            runCatching { summarizeNotes.summarize(firstChunks, engine.mode) }
+            val first = topics.getJSONObject(0)
+            runCatching {
+                summarizeNotes.summarize(chunksOf(stored, first.getString("id")), engine.mode, first.getString("topic"))
+            }
             log("warm-up done")
         }
 
         for (index in 0 until topics.length()) {
-            val id = topics.getJSONObject(index).getString("id")
+            val topic = topics.getJSONObject(index)
+            val id = topic.getString("id")
             val chunks = chunksOf(stored, id)
             val runs = JSONArray()
-            repeat(REPEATS) { runs.put(runOnce(chunks, engine, it + 1)) }
+            repeat(engine.repeats) { runs.put(runPatiently(chunks, engine, it + 1, topic.getString("topic"))) }
 
             val topicResults = results.optJSONObject(id) ?: JSONObject().also { results.put(id, it) }
             topicResults.put(engine.key, runs)
@@ -118,10 +134,32 @@ class EvalRunner(
         return true
     }
 
-    private suspend fun runOnce(chunks: List<RetrievedChunk>, engine: Engine, run: Int): JSONObject {
+    /**
+     * The on-device model reports BUSY for a while after a finished call (the router's own short
+     * retries are not enough for back-to-back runs). Wait and retry here so a busy model does not count
+     * as a quality failure, and record how long it took: that is the real BUSY window.
+     */
+    private suspend fun runPatiently(
+        chunks: List<RetrievedChunk>,
+        engine: Engine,
+        run: Int,
+        topic: String,
+    ): JSONObject {
+        var record = runOnce(chunks, engine, run, topic)
+        var retries = 0
+        while (engine == Engine.NANO && record.optString("reason") == "BUSY" && retries < MAX_BUSY_RETRIES) {
+            delay(BUSY_RETRY_MS)
+            retries++
+            record = runOnce(chunks, engine, run, topic)
+        }
+        if (retries > 0) record.put("busyRetries", retries).put("busyWaitedMs", retries * BUSY_RETRY_MS)
+        return record
+    }
+
+    private suspend fun runOnce(chunks: List<RetrievedChunk>, engine: Engine, run: Int, topic: String): JSONObject {
         val record = JSONObject().put("run", run)
         return try {
-            val summary = summarizeNotes.summarize(chunks, engine.mode)
+            val summary = summarizeNotes.summarize(chunks, engine.mode, topic)
                 ?: return record.put("error", "no chunks for this topic")
             record
                 .put("bullets", JSONArray(summary.bullets))
@@ -157,7 +195,8 @@ class EvalRunner(
         val meta = JSONObject()
             .put("device", "${Build.MANUFACTURER} ${Build.MODEL}")
             .put("api", Build.VERSION.SDK_INT)
-            .put("repeatsPerEngine", REPEATS)
+            .put("evalVersion", EVAL_VERSION)
+            .put("repeatsPerEngine", JSONObject().apply { Engine.entries.forEach { put(it.key, it.repeats) } })
             .put("exportedAt", Instant.now().toString())
         return JSONObject().put("meta", meta).put("topics", exported).toString(2)
     }

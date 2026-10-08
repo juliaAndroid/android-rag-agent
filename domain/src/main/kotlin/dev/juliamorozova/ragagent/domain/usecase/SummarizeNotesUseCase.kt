@@ -20,11 +20,19 @@ interface SummarizeNotesUseCase {
     suspend operator fun invoke(topic: String, mode: RoutingMode = RoutingMode.AUTO): NotesSummary?
 
     /**
-     * Searches the notes for [topic] and keeps the best chunks that fit the on-device input limit,
-     * in reading order. Empty for a blank topic or when nothing is found.
+     * Searches the notes for [topic] and keeps the best chunks of the single best-matching note, in
+     * reading order and within the on-device input limit. Empty for a blank topic or when nothing is found.
      */
     suspend fun selectChunks(topic: String): List<RetrievedChunk>
 
-    /** Summarizes exactly [chunks], in the given order. Null when [chunks] is empty. */
-    suspend fun summarize(chunks: List<RetrievedChunk>, mode: RoutingMode = RoutingMode.AUTO): NotesSummary?
+    /**
+     * Summarizes exactly [chunks], in the given order. Null when [chunks] is empty.
+     *
+     * @param topic Passed to the cloud summarizer so it can focus on it; the on-device model ignores it.
+     */
+    suspend fun summarize(
+        chunks: List<RetrievedChunk>,
+        mode: RoutingMode = RoutingMode.AUTO,
+        topic: String? = null,
+    ): NotesSummary?
 }

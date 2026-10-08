@@ -117,7 +117,7 @@ private fun NanoEvalScreen(summarizeNotes: SummarizeNotesUseCase, onDevice: OnDe
             Button(enabled = !running, onClick = { launchTask("run Claude x3") { runner.run(EvalRunner.Engine.CLAUDE) } }) {
                 Text("2. Run Claude")
             }
-            Button(enabled = !running, onClick = { launchTask("run Nano x3") { runner.run(EvalRunner.Engine.NANO) } }) {
+            Button(enabled = !running, onClick = { launchTask("run Nano x1") { runner.run(EvalRunner.Engine.NANO) } }) {
                 Text("3. Run Nano")
             }
             Button(onClick = { clipboard.setText(AnnotatedString(runner.exportJson())) }) { Text("Copy results") }

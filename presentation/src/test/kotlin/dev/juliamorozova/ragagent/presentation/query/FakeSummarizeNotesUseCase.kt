@@ -22,6 +22,6 @@ class FakeSummarizeNotesUseCase(
     // The ViewModel only uses invoke(); the split steps exist for the evaluation tooling.
     override suspend fun selectChunks(topic: String): List<RetrievedChunk> = error("Not used by the ViewModel")
 
-    override suspend fun summarize(chunks: List<RetrievedChunk>, mode: RoutingMode): NotesSummary? =
+    override suspend fun summarize(chunks: List<RetrievedChunk>, mode: RoutingMode, topic: String?): NotesSummary? =
         error("Not used by the ViewModel")
 }

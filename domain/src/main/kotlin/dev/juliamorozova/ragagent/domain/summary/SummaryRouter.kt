@@ -18,7 +18,9 @@ enum class RoutingMode { AUTO, ON_DEVICE_ONLY, CLOUD_ONLY }
 class SummaryRouter(
     private val onDevice: OnDeviceSummarizer,
     private val cloud: CloudSummarizer,
-    private val busyRetryDelaysMillis: List<Long> = listOf(500L, 1_000L),
+    // Measured on a Galaxy S25: after a finished call the model reported BUSY for more than 1.5 s but
+    // had cleared by the 3 s retry (36 of 36 waits), so these delays cover back-to-back requests.
+    private val busyRetryDelaysMillis: List<Long> = listOf(1_000L, 2_000L, 3_000L),
     private val nanoClock: () -> Long = System::nanoTime,
 ) {
 
@@ -33,14 +35,16 @@ class SummaryRouter(
     /**
      * @param text The passages to summarize, already trimmed to the on-device limit when possible.
      * @param sources The chunks [text] was built from, passed through to the result.
+     * @param topic The user's topic. Only the cloud summarizer can use it; the on-device model takes text only.
      * @throws OnDeviceSummarizationException only in [RoutingMode.ON_DEVICE_ONLY] when the on-device model fails.
      */
     suspend fun summarize(
         text: String,
         sources: List<RetrievedChunk>,
         mode: RoutingMode = RoutingMode.AUTO,
+        topic: String? = null,
     ): NotesSummary {
-        if (mode == RoutingMode.CLOUD_ONLY) return fromCloud(text, sources, reason = null)
+        if (mode == RoutingMode.CLOUD_ONLY) return fromCloud(text, sources, topic, reason = null)
 
         return when (val attempt = attemptOnDevice(text)) {
             is Attempt.Succeeded -> NotesSummary(
@@ -53,14 +57,19 @@ class SummaryRouter(
                 if (mode == RoutingMode.ON_DEVICE_ONLY) {
                     throw OnDeviceSummarizationException(attempt.reason, cause = attempt.cause)
                 }
-                fromCloud(text, sources, attempt.reason)
+                fromCloud(text, sources, topic, attempt.reason)
             }
         }
     }
 
-    private suspend fun fromCloud(text: String, sources: List<RetrievedChunk>, reason: FallbackReason?): NotesSummary {
+    private suspend fun fromCloud(
+        text: String,
+        sources: List<RetrievedChunk>,
+        topic: String?,
+        reason: FallbackReason?,
+    ): NotesSummary {
         val start = nanoClock()
-        val bullets = cloud.summarize(text)
+        val bullets = cloud.summarize(text, topic)
         return NotesSummary(
             bullets = bullets,
             engine = SummaryEngine.CLOUD,

@@ -45,8 +45,10 @@ class SummaryRouterTest {
 
     private class FakeCloud : CloudSummarizer {
         var calls = 0
-        override suspend fun summarize(text: String): List<String> {
+        var lastTopic: String? = null
+        override suspend fun summarize(text: String, topic: String?): List<String> {
             calls++
+            lastTopic = topic
             return listOf("cloud bullet")
         }
     }
@@ -205,6 +207,22 @@ class SummaryRouterTest {
 
         assertThat(result.fallbackReason).isEqualTo(FallbackReason.SERVICE_UNAVAILABLE)
         assertThat(onDevice.summarizeCalls).isEqualTo(0)
+    }
+
+    @Test
+    fun `the topic reaches the cloud summarizer`() = runTest {
+        router.summarize(text, sources, RoutingMode.CLOUD_ONLY, topic = "clean architecture")
+
+        assertThat(cloud.lastTopic).isEqualTo("clean architecture")
+    }
+
+    @Test
+    fun `the topic also reaches the cloud summarizer on a fallback`() = runTest {
+        onDevice.availability = OnDeviceAvailability.Unavailable(FallbackReason.UNSUPPORTED_DEVICE)
+
+        router.summarize(text, sources, topic = "kmm")
+
+        assertThat(cloud.lastTopic).isEqualTo("kmm")
     }
 
     @Test

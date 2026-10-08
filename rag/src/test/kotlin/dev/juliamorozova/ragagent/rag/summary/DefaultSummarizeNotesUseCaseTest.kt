@@ -47,8 +47,10 @@ class DefaultSummarizeNotesUseCaseTest {
 
     private class FakeCloud : CloudSummarizer {
         var lastText: String? = null
-        override suspend fun summarize(text: String): List<String> {
+        var lastTopic: String? = null
+        override suspend fun summarize(text: String, topic: String?): List<String> {
             lastText = text
+            lastTopic = topic
             return listOf("cloud bullet")
         }
     }
@@ -99,29 +101,52 @@ class DefaultSummarizeNotesUseCaseTest {
     }
 
     @Test
-    fun `chunks of one note are read together in document order, not in score order`() = runTest {
+    fun `only the chunks of the note with the best-scoring chunk are used`() = runTest {
         retrieve.results = listOf(
-            chunk("b1", "b.md", 0, 500, 0.9f, fill = 'B'),
-            chunk("a2", "a.md", 1, 500, 0.8f, fill = 'A'),
-            chunk("a1", "a.md", 0, 500, 0.7f, fill = 'C'),
+            chunk("a1", "a.md", 0, 500, 0.9f),
+            chunk("b1", "b.md", 0, 500, 0.8f), // second-best overall, but another note
+            chunk("a2", "a.md", 1, 500, 0.5f),
+            chunk("c1", "c.md", 0, 500, 0.4f),
         )
 
         val summary = useCase("topic")!!
 
-        assertThat(summary.sources.map { it.chunk.id }).containsExactly("a1", "a2", "b1").inOrder()
+        assertThat(summary.sources.map { it.chunk.id }).containsExactly("a1", "a2").inOrder()
+    }
+
+    @Test
+    fun `the chosen note's chunks are read in position order, not in score order`() = runTest {
+        retrieve.results = listOf(
+            chunk("p2", "a.md", 2, 500, 0.9f, fill = 'C'),
+            chunk("p0", "a.md", 0, 500, 0.8f, fill = 'A'),
+            chunk("p1", "a.md", 1, 500, 0.7f, fill = 'B'),
+        )
+
+        val summary = useCase("topic")!!
+
+        assertThat(summary.sources.map { it.chunk.id }).containsExactly("p0", "p1", "p2").inOrder()
         assertThat(onDevice.lastText).isEqualTo(
-            "C".repeat(500) + "\n\n" + "A".repeat(500) + "\n\n" + "B".repeat(500),
+            "A".repeat(500) + "\n\n" + "B".repeat(500) + "\n\n" + "C".repeat(500),
         )
     }
 
     @Test
-    fun `only the best chunks that fit the on-device limit are kept`() = runTest {
+    fun `at most five chunks are used, the best ones`() = runTest {
+        retrieve.results = (0 until 7).map { chunk("c$it", "a.md", it, 400, score = 1f - it * 0.1f) }
+
+        val summary = useCase("topic")!!
+
+        assertThat(summary.sources.map { it.chunk.id }).containsExactly("c0", "c1", "c2", "c3", "c4").inOrder()
+    }
+
+    @Test
+    fun `only the best chunks of the note that fit the on-device limit are kept`() = runTest {
         // Four 3000-char chunks do not fit 7860; the two best do (3000 + 2 + 3000).
         retrieve.results = listOf(
             chunk("low", "a.md", 0, 3_000, 0.2f),
-            chunk("best", "b.md", 0, 3_000, 0.9f),
-            chunk("mid", "c.md", 0, 3_000, 0.5f),
-            chunk("lowest", "d.md", 0, 3_000, 0.1f),
+            chunk("best", "a.md", 1, 3_000, 0.9f),
+            chunk("mid", "a.md", 2, 3_000, 0.5f),
+            chunk("lowest", "a.md", 3, 3_000, 0.1f),
         )
 
         val summary = useCase("topic")!!
@@ -134,13 +159,32 @@ class DefaultSummarizeNotesUseCaseTest {
     fun `a smaller lower-ranked chunk still fits after a large one is skipped`() = runTest {
         retrieve.results = listOf(
             chunk("big1", "a.md", 0, 4_000, 0.9f),
-            chunk("big2", "b.md", 0, 4_000, 0.8f),
-            chunk("small", "c.md", 0, 500, 0.1f),
+            chunk("big2", "a.md", 1, 4_000, 0.8f),
+            chunk("small", "a.md", 2, 500, 0.1f),
         )
 
         val summary = useCase("topic")!!
 
         assertThat(summary.sources.map { it.chunk.id }).containsExactly("big1", "small").inOrder()
+    }
+
+    @Test
+    fun `the topic is passed on to the summarizer when summarizing a topic`() = runTest {
+        onDevice.availability = OnDeviceAvailability.Unavailable(FallbackReason.UNSUPPORTED_DEVICE)
+        retrieve.results = listOf(chunk("c1", "a.md", 0, 800, 0.9f))
+
+        useCase("  clean architecture  ")
+
+        assertThat(cloud.lastTopic).isEqualTo("clean architecture")
+    }
+
+    @Test
+    fun `summarize passes the given topic to the cloud summarizer`() = runTest {
+        onDevice.availability = OnDeviceAvailability.Unavailable(FallbackReason.UNSUPPORTED_DEVICE)
+
+        useCase.summarize(listOf(chunk("c1", "a.md", 0, 800, 0.9f)), topic = "kmm")
+
+        assertThat(cloud.lastTopic).isEqualTo("kmm")
     }
 
     @Test
@@ -198,7 +242,7 @@ class DefaultSummarizeNotesUseCaseTest {
         val given = listOf(
             chunk("z", "z.md", 0, 500, 0.1f, fill = 'Z'),
             chunk("a", "a.md", 0, 500, 0.9f, fill = 'A'),
-        )
+        ) // deliberately two notes and a "wrong" order: summarize() must not reselect or reorder
 
         val summary = useCase.summarize(given)!!
 
