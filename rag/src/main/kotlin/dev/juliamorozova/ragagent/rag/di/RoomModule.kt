@@ -20,8 +20,7 @@ object RoomModule {
     @Singleton
     fun provideRagDatabase(@ApplicationContext context: Context): RagDatabase =
         Room.databaseBuilder(context, RagDatabase::class.java, RagDatabase.DATABASE_NAME)
-            // Pre-release: no real users' data to preserve yet, so wiping on a schema bump
-            // is fine. Switch to a real Migration once this ships for real.
+            // Demo app: a schema change wipes the stored notes, so no migration is written.
             .fallbackToDestructiveMigration(dropAllTables = true)
             .build()
 

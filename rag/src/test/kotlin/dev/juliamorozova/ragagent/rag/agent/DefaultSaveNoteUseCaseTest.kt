@@ -4,7 +4,6 @@ import com.google.common.truth.Truth.assertThat
 import dev.juliamorozova.ragagent.domain.model.IngestResult
 import dev.juliamorozova.ragagent.domain.model.IngestionFailure
 import dev.juliamorozova.ragagent.domain.usecase.IngestDocumentUseCase
-import dev.juliamorozova.ragagent.rag.fakes.FakeVectorStoreRepository
 import kotlinx.coroutines.test.runTest
 import org.junit.Test
 
@@ -22,7 +21,7 @@ class DefaultSaveNoteUseCaseTest {
     }
 
     private val ingest = FakeIngest()
-    private val useCase = DefaultSaveNoteUseCase(ingest, FakeVectorStoreRepository())
+    private val useCase = DefaultSaveNoteUseCase(ingest)
 
     @Test
     fun `stores the confirmed text as a chat-note document`() = runTest {

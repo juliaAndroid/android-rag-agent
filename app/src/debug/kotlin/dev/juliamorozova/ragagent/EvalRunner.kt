@@ -2,6 +2,7 @@ package dev.juliamorozova.ragagent
 
 import android.content.Context
 import android.os.Build
+import dev.juliamorozova.ragagent.domain.model.ChatNote
 import dev.juliamorozova.ragagent.domain.model.Chunk
 import dev.juliamorozova.ragagent.domain.model.RetrievedChunk
 import dev.juliamorozova.ragagent.domain.summary.OnDeviceAvailability
@@ -27,9 +28,6 @@ private const val EVAL_VERSION = "v3"
 /** How often and how many times to retry a busy on-device model before giving up on a run. */
 private const val BUSY_RETRY_MS = 3_000L
 private const val MAX_BUSY_RETRIES = 8
-
-/** Personal chat notes would change what retrieval returns, so they stay out of the evaluation. */
-private const val CHAT_NOTE_PREFIX = "chat-note-"
 
 /**
  * Debug-only evaluation of the two summarizers on the same chunks.
@@ -77,7 +75,8 @@ class EvalRunner(
                 continue
             }
             val chunks = summarizeNotes.selectChunks(topic.getString("topic"))
-                .filterNot { it.chunk.documentId.startsWith(CHAT_NOTE_PREFIX) }
+                // Personal chat notes would change what retrieval returns, so they stay out of the evaluation.
+                .filterNot { ChatNote.isChatNote(it.chunk.documentId) }
             stored.put(id, JSONArray().apply { chunks.forEach { put(it.toJson()) } })
             chunksFile.writeText(stored.toString(2))
             log("prepared ${index + 1}/${topics.length()} $id: ${chunks.size} chunks")

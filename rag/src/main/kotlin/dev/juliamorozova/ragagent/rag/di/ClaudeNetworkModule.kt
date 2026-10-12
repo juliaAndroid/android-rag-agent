@@ -47,7 +47,9 @@ object ClaudeNetworkModule {
     @ClaudeHttpClient
     fun provideClaudeOkHttpClient(): OkHttpClient {
         val logging = HttpLoggingInterceptor().apply {
-            level = HttpLoggingInterceptor.Level.BODY
+            // BASIC: BODY would print the user's questions, note passages and answers to logcat in every build.
+            // Flip to BODY only on a development machine while debugging, and never commit it.
+            level = HttpLoggingInterceptor.Level.BASIC
         }
         return OkHttpClient.Builder()
             .addInterceptor(logging)

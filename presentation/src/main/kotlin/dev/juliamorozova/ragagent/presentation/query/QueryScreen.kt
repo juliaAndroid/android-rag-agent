@@ -48,6 +48,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import dev.juliamorozova.ragagent.domain.model.ChatNote
 import dev.juliamorozova.ragagent.domain.model.FallbackReason
 import dev.juliamorozova.ragagent.domain.model.NotesSummary
 import dev.juliamorozova.ragagent.domain.model.RetrievedChunk
@@ -61,7 +62,7 @@ private val CITATION_DATE_FORMATTER = DateTimeFormatter.ofPattern("MMM d")
 
 @Composable
 private fun citationLabel(documentId: String, createdAtMillis: Long): String {
-    if (documentId.startsWith("chat-note-")) {
+    if (ChatNote.isChatNote(documentId)) {
         val date = Instant.ofEpochMilli(createdAtMillis).atZone(ZoneId.systemDefault()).toLocalDate()
         return stringResource(R.string.query_citation_note, date.format(CITATION_DATE_FORMATTER))
     }
