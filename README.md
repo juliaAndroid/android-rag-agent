@@ -5,6 +5,10 @@ a Claude agent (tool use) with a Retrieval-Augmented Generation pipeline, calls 
 small serverless proxy so no API keys ship in the APK, and summarizes on the device with Gemini Nano when
 the phone supports it. Built on Clean Architecture.
 
+> **To get answers from the app you need your own deployment of the proxy** (a small AWS stack with your own
+> Claude and Voyage keys, so you pay for your own requests). The app builds and its unit tests run without it.
+> See [Running it](#running-it).
+
 ## What it does
 
 - **Ask**: a question about your notes. Claude decides when to search the knowledge base (a
