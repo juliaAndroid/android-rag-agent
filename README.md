@@ -105,10 +105,6 @@ is a limit set with each provider.
    Without it the app still builds and starts, but every model call fails with a network error.
 3. Open the project in Android Studio and run the `app` configuration.
 
-This project has no `gradlew`/`gradle-wrapper.jar`. Either let Android Studio create the wrapper, or run
-`gradle wrapper --gradle-version 9.7.1` with a local Gradle install; `gradle/wrapper/gradle-wrapper.properties`
-already pins 9.7.1.
-
 Run the unit tests with:
 
 ```
@@ -166,6 +162,16 @@ In a debug build, long-press the app icon for two shortcuts: **Nano spike** (a s
 on-device model directly) and **Nano eval** (runs the on-device and the cloud summarizer on the same
 chunks and exports the results as JSON). Neither is part of the release build.
 
+## Design decisions
+
+Each decision is written up with the context, the alternatives that were rejected and its limits:
+
+- [0001 Prompt injection: defense in depth, with a human confirming every write](docs/adr/0001-prompt-injection-defense-in-depth.md)
+- [0002 Hybrid summarization: Gemini Nano on the device, Claude as the fallback](docs/adr/0002-hybrid-on-device-cloud-summarization.md)
+- [0003 Secrets stay on the server: a serverless proxy reads them from SSM](docs/adr/0003-secret-handling.md)
+- [0004 Conflicting facts: keep every note, resolve by date when answering](docs/adr/0004-conflicting-facts-resolved-at-read-time.md)
+- [0005 Prompt caching is deliberately deferred](docs/adr/0005-prompt-caching-deferred.md)
+
 ## Known trade-offs
 
 Decisions made on purpose, with the reasoning, so they read as scoped out and not forgotten.
@@ -194,3 +200,7 @@ Decisions made on purpose, with the reasoning, so they read as scoped out and no
   summarizer, and Gemini Nano then summarizes the nearest chunks, because it never sees the topic. A tighter floor would
   be fitted to a 15-chunk knowledge base.
 - **The proxy has no caller authentication.** See "Backend proxy".
+- **Schema changes wipe the local notes.** Room is set to `fallbackToDestructiveMigration`, so a new database version
+  drops the stored notes instead of migrating them. This is a demo that is not meant to be upgraded in place.
+- **The release build is not minified** (R8 is off) and the dependencies were not bumped to their newest versions.
+  Both would be done before publishing; neither changes how the app behaves.
