@@ -43,6 +43,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -112,6 +113,7 @@ fun QueryScreen(
 ) {
     val state by viewModel.uiState.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }
+    val focusManager = LocalFocusManager.current
     val isBusy = state.isLoading || state.isSummarizing
 
     // Resolved while composing (string resources need it), then shown once per message.
@@ -211,7 +213,11 @@ fun QueryScreen(
             Spacer(modifier = Modifier.height(8.dp))
 
             Button(
-                onClick = viewModel::onSubmit,
+                onClick = {
+                    // Drops the keyboard so the answer is not hidden behind it.
+                    focusManager.clearFocus()
+                    viewModel.onSubmit()
+                },
                 enabled = !isBusy,
                 modifier = Modifier.fillMaxWidth(),
             ) {
