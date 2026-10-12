@@ -70,6 +70,25 @@ class DefaultSummarizeNotesUseCaseTest {
     }
 
     @Test
+    fun `chunks that all score below the relevance floor return null without calling any model`() = runTest {
+        retrieve.results = listOf(
+            chunk("a", "note.md", 0, length = 500, score = MIN_RELEVANCE - 0.01f),
+            chunk("b", "note.md", 1, length = 500, score = 0.1f),
+        )
+
+        assertThat(useCase("i like london")).isNull()
+        assertThat(onDevice.calls).isEqualTo(0)
+        assertThat(cloud.lastText).isNull()
+    }
+
+    @Test
+    fun `a best score exactly at the relevance floor is still summarized`() = runTest {
+        retrieve.results = listOf(chunk("a", "note.md", 0, length = 500, score = MIN_RELEVANCE))
+
+        assertThat(useCase("clean architecture")).isNotNull()
+    }
+
+    @Test
     fun `no relevant chunks returns null without calling any model`() = runTest {
         retrieve.results = emptyList()
 

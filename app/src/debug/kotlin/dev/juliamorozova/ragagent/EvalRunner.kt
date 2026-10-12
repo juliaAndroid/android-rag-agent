@@ -20,8 +20,9 @@ import java.time.Instant
  * Bumped whenever how chunks are chosen changes, so cached chunks and results of an older rule are never
  * mixed with new ones (the files of the previous version stay untouched).
  * v1: the 7 best chunks of any notes. v2: the best chunks of the single best-matching note, at most 5.
+ * v3: v2 plus a relevance floor: a topic whose best chunk scores below 0.35 gets no chunks at all.
  */
-private const val EVAL_VERSION = "v2"
+private const val EVAL_VERSION = "v3"
 
 /** How often and how many times to retry a busy on-device model before giving up on a run. */
 private const val BUSY_RETRY_MS = 3_000L

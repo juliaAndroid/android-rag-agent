@@ -121,10 +121,37 @@ emulator.
 | Supported phones | The S25 works. The S23 and the emulator fail with `AICORE_INCOMPATIBLE`, so they use Claude. |
 | Input size | 400 to 7860 characters for article input (the documentation suggests a much larger limit). |
 | Call mode | The plain call works. The streaming overload failed with a policy-check error on the same text. |
-| Speed | About 3 s to warm up, then about 4 to 5 s per summary, against roughly 1 to 1.5 s for Claude. |
+| Speed | About 3 s to warm up. On 2 to 5 chunks the median was 2.8 s on the S25 against 1.7 s for Claude; on 7 chunks it was 9.2 s against 2.3 s. Input length drives it. |
 | Setup | AICore can be disabled in the phone's app settings, which shows up as error 601. |
 | Output | Up to three bullets; English, Japanese and Korean only. |
 | Can refuse | The model sometimes declines an input; the router falls back to Claude for that request. |
+
+### Summary quality (15 topics, Galaxy S25)
+
+Each summary was scored against three key points per topic. A case passes when nothing is invented or
+distorted and at least two of the three key points are covered (for topics that are not in the notes, nothing
+invented is enough). The target of 90% was set before measuring.
+
+| | Runs | Passed | Median time |
+|---|---|---|---|
+| Claude (topic passed to the model) | 45 (3 per topic) | 41 (91%) | 1.7 s |
+| Gemini Nano (text only) | 15 (1 per topic) | 6 (40%) | 2.8 s |
+
+What the numbers say:
+
+- Nano only receives the text of the chunks, never the topic, so its output depends on the chunks alone: the 15 topics
+  produced 9 different texts, and four topics about Kotlin Multiplatform got the same word-for-word answer.
+- Nano sometimes distorts or invents details (a "team of security experts", "invalid logout tokens" for a token that was
+  never invalidated). On a topic that is not in the notes it summarizes the nearest chunks without saying so.
+- Claude answers the topic and says so when the notes do not cover it. Its one inaccurate run attributed a blind spot to
+  the wrong category.
+- Retrieval is the weakest link: two topics got the wrong note. The descriptive topics of the evaluation scored 0.54 or
+  more, unrelated ones 0.46 or less (a Russian sentence about London: 0.24). Short queries a person would type score
+  lower, 0.33 to 0.62 ("clean architecture" 0.39), so the margin to junk (0.29 or less) is thin on a 15-chunk knowledge base.
+
+Caveats: the first evaluation (v1) ran on an older knowledge base; the scorer was Claude, which may favor its own family;
+Claude and Nano do not receive the same input, so the comparison describes the app as it is; Nano had one run per topic
+because its output was identical across repeated runs in v1.
 
 Note on privacy: only the generation of the summary stays on the phone. Embedding the topic, and the text
 of saved notes, still goes to Voyage through the proxy.
@@ -158,6 +185,8 @@ Decisions made on purpose, with the reasoning, so they read as scoped out and no
   Batching alone was not enough, since the limit is rate-based (about 3 requests a minute). `VoyageEmbedTextUseCase`
   therefore throttles itself (it tracks the last request time and waits out the window), with exponential
   backoff on 429 kept underneath as a fallback.
-- **Retrieval has no relevance threshold.** The nearest chunks are always returned, so Summarize on a topic
-  the notes do not cover still produces a summary of the closest, unrelated chunks.
+- **Only a low relevance floor (0.35).** Summarize says "No notes found" when even the best chunk scores below it, which
+  removes unrelated input such as "I like London" (0.24). Near-miss topics (Gradle 0.46, iOS push 0.38) still reach the
+  summarizer, and Gemini Nano then summarizes the nearest chunks, because it never sees the topic. A tighter floor would
+  be fitted to a 15-chunk knowledge base.
 - **The proxy has no caller authentication.** See "Backend proxy".

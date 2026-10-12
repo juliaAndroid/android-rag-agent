@@ -12,6 +12,13 @@ import javax.inject.Inject
 /** How many nearest chunks to look at when choosing the note to summarize. */
 private const val RETRIEVAL_POOL = 7
 
+/**
+ * Below this best score nothing is summarized. Measured with voyage-4: descriptive topics found in the notes score
+ * 0.54 or more, short typed queries 0.33 to 0.62, unrelated topics 0.46 or less, and plain junk ("I like London") 0.29
+ * or less. The floor is set low on purpose: with a 15-chunk knowledge base a tighter one would be fitted to the examples.
+ */
+internal const val MIN_RELEVANCE = 0.35f
+
 /** Most chunks handed to a summarizer (800 characters each at most). */
 private const val MAX_CHUNKS = 5
 private const val SEPARATOR = "\n\n"
@@ -50,7 +57,9 @@ class DefaultSummarizeNotesUseCase @Inject constructor(
      * order. A topic spread over several notes is summarized from the best one only.
      */
     private fun selectFromBestNote(retrieved: List<RetrievedChunk>, limit: Int): List<RetrievedChunk> {
-        val bestNote = retrieved.maxByOrNull { it.score }?.chunk?.documentId ?: return emptyList()
+        val best = retrieved.maxByOrNull { it.score } ?: return emptyList()
+        if (best.score < MIN_RELEVANCE) return emptyList()
+        val bestNote = best.chunk.documentId
 
         var used = 0
         val kept = mutableListOf<RetrievedChunk>()
