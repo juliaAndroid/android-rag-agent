@@ -73,9 +73,8 @@ private const val MIN_LENGTH_TO_TRIM = 40
 private const val BOUNDARY_SEARCH_MARGIN = 20
 
 /**
- * Display-only cleanup for chunk text sliced at fixed character offsets (see SlidingWindowChunker),
- * which can cut mid-word at either edge. Only trims when a whitespace boundary is close enough to
- * the edge to be confident it's a chunk seam rather than just short text.
+ * Display-only cleanup for chunk text cut at fixed offsets: trims a partial word only when a whitespace boundary
+ * is near the edge.
  */
 private fun String.trimToWordBoundaries(): String {
     if (length < MIN_LENGTH_TO_TRIM) return this
@@ -106,7 +105,6 @@ private fun String.trimToWordBoundaries(): String {
     }
 }
 
-/** Query/response screen: Ask a question or Summarize a topic, with source citations. */
 @Composable
 fun QueryScreen(
     modifier: Modifier = Modifier,
@@ -117,7 +115,7 @@ fun QueryScreen(
     val focusManager = LocalFocusManager.current
     val isBusy = state.isLoading || state.isSummarizing
 
-    // Resolved while composing (string resources need it), then shown once per message.
+    // Resolved while composing (string resources need it), shown once per message.
     val noteSaveText = state.noteSaveMessage?.asString()
     LaunchedEffect(state.noteSaveMessage) {
         val message = noteSaveText ?: return@LaunchedEffect
@@ -215,7 +213,6 @@ fun QueryScreen(
 
             Button(
                 onClick = {
-                    // Drops the keyboard so the answer is not hidden behind it.
                     focusManager.clearFocus()
                     viewModel.onSubmit()
                 },
@@ -398,7 +395,6 @@ private fun StatusText(text: String) {
     )
 }
 
-/** Source chips; tapping one expands the chunk text it came from. */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun SourceChips(citations: List<RetrievedChunk>) {

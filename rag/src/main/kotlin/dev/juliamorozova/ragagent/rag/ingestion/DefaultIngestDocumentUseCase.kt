@@ -18,10 +18,8 @@ class DefaultIngestDocumentUseCase @Inject constructor(
         val chunks = chunkText(documentId, text)
         if (chunks.isEmpty()) return IngestResult(total = 0, succeeded = 0, failures = emptyList())
 
-        // One batched call for every chunk in this document, instead of one call per
-        // chunk — see README "Known trade-offs" / the rate-limit incident that prompted
-        // this. If the batch itself fails (network, 429, etc.), none of this document's
-        // chunks got embedded, so all of them count as failed below.
+        // One batched call for all chunks of the document instead of one per chunk (see README "Known trade-offs"). If
+        // the batch fails, none of its chunks were embedded, so all count as failed.
         val embeddingsResult = runCatching { embedText(chunks.map { it.text }) }
 
         return embeddingsResult.fold(

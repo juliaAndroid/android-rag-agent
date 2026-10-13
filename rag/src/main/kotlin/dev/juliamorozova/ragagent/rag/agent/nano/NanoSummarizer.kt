@@ -22,13 +22,8 @@ private const val MIN_INPUT_CHARS = 400
 private const val MAX_INPUT_CHARS = 7_860
 
 /**
- * [OnDeviceSummarizer] backed by Gemini Nano through ML Kit GenAI Summarization.
- *
- * Uses the plain `runInference(request)` call, never the streaming overload: on the S25 the
- * streaming call failed with a policy-check error on input the plain call summarized fine.
- *
- * Every ML Kit failure leaves this class as an [OnDeviceSummarizationException] carrying a
- * [FallbackReason], so callers never depend on ML Kit's error codes.
+ * [OnDeviceSummarizer] on Gemini Nano via ML Kit. Uses the plain `runInference` (streaming failed with a policy-
+ * check error). Every failure leaves as an [OnDeviceSummarizationException].
  */
 @Singleton
 class NanoSummarizer @Inject constructor(
@@ -67,7 +62,7 @@ class NanoSummarizer @Inject constructor(
 
                 override fun onDownloadCompleted() = onProgress(100)
 
-                // The future returned by downloadFeature fails too, and translating() turns that into the error.
+                // The future from downloadFeature fails too, and translating() turns that into the error.
                 override fun onDownloadFailed(e: GenAiException) = Unit
             },
         ).await()
@@ -82,8 +77,8 @@ class NanoSummarizer @Inject constructor(
     }
 
     /**
-     * [com.google.mlkit.genai.common.FeatureStatus.UNAVAILABLE] gives no reason, but on an unsupported
-     * phone (a Galaxy S23) a follow-up call fails with the real error code, so ask for one.
+     * UNAVAILABLE gives no reason; on an unsupported phone a follow-up call fails with the real code, so ask for
+     * one.
      */
     private suspend fun unavailableReason(): FallbackReason = try {
         client.getBaseModelName().await()

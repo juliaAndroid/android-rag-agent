@@ -1,6 +1,5 @@
 package dev.juliamorozova.ragagent.domain.model
 
-/** Notes saved from the chat are stored as their own documents, told apart from the seeded files by this id prefix. */
 object ChatNote {
     const val DOCUMENT_ID_PREFIX = "chat-note-"
 

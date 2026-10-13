@@ -9,8 +9,7 @@ import javax.inject.Inject
 
 private const val MAX_TOKENS = 1024
 
-/** Safety valve: if Claude keeps calling tools without ever settling on an answer,
- *  stop asking rather than loop (and burn tokens) forever. */
+/** Safety valve: stop after this many tool hops instead of looping (and burning tokens) forever. */
 private const val MAX_TOOL_HOPS = 5
 
 private const val DEFAULT_SYSTEM_PROMPT = """
@@ -34,12 +33,6 @@ You cannot save or remember anything yourself. If the user tells you a fact, don
 noted it — they save notes with the "Save as note" button.
 """
 
-/**
- * [AgentLoop] backed by the real Claude Messages API: sends the conversation with the
- * available tools, and whenever `stop_reason` is "tool_use", executes the matching
- * [AgentTool] locally and feeds the result back — repeating until Claude produces a
- * final text answer or [MAX_TOOL_HOPS] is exhausted.
- */
 class ClaudeAgentLoop @Inject constructor(
     private val claudeApi: ClaudeApi,
     private val json: Json,
@@ -62,11 +55,8 @@ class ClaudeAgentLoop @Inject constructor(
 
         val messages = conversation.map { it.toClaudeMessage() }.toMutableList()
 
-        // Claude sometimes narrates a tool call ("I'll save that...") in the same
-        // response as the tool_use block, then produces no further text once it sees
-        // the tool_result — it considers itself already having "said" the relevant
-        // thing. Track the last non-blank text across hops so that narration isn't
-        // silently discarded, in case the hop that actually ends the loop has nothing.
+        // Claude sometimes narrates a tool call ("I'll save that...") and then says nothing after the tool_result.
+        // Keep the last non-blank text across hops so that narration isn't lost.
         var lastNonBlankText: String? = null
 
         repeat(MAX_TOOL_HOPS) {
@@ -80,7 +70,7 @@ class ClaudeAgentLoop @Inject constructor(
                 ),
             )
 
-            // Not streaming this response on purpose — see README "Known trade-offs".
+            // Not streamed on purpose; see README "Known trade-offs".
 
             val text = response.content
                 .filterIsInstance<ClaudeContentBlock.Text>()
@@ -96,8 +86,8 @@ class ClaudeAgentLoop @Inject constructor(
 
             if (text.isNotBlank()) onNarration(text)
 
-            // Claude's turn (including its tool_use blocks) must be echoed back verbatim
-            // before we can answer with tool_result blocks — the API requires both.
+            // Claude's turn, including its tool_use blocks, must be echoed back verbatim before the tool_result
+            // blocks; the API requires both.
             messages += ClaudeMessage(role = "assistant", content = response.content)
 
             val toolUses = response.content.filterIsInstance<ClaudeContentBlock.ToolUse>()
@@ -112,11 +102,8 @@ class ClaudeAgentLoop @Inject constructor(
                     ClaudeContentBlock.ToolResult(toolUseId = toolUse.id, content = resultText)
                 }
 
-            // A tool that ends the turn (e.g. proposing a note for the user to confirm) is
-            // itself the answer, so stop here instead of paying for a follow-up call that
-            // only produces closing commentary. This leaves a tool_use without a tool_result,
-            // which is fine because this conversation is never sent to the API again — the
-            // API only requires the pairing when a history containing the tool_use is sent.
+            // A tool that ends the turn is the answer: skip the follow-up call. The unanswered tool_use is fine
+            // because this conversation is never sent again.
             if (toolUses.any { toolsByName[it.name]?.endsTurn == true }) {
                 return AgentMessage(
                     role = AgentMessage.Role.ASSISTANT,
@@ -137,9 +124,8 @@ class ClaudeAgentLoop @Inject constructor(
         role = when (role) {
             AgentMessage.Role.USER -> "user"
             AgentMessage.Role.ASSISTANT -> "assistant"
-            // The domain model allows a TOOL-authored seed message in principle, but the
-            // agent loop itself is the only thing that produces tool_result content — a
-            // caller seeding one directly isn't a real use case yet.
+            // The domain allows a tool-authored seed message, but only the loop produces tool_result content, so
+            // seeding one is not a real use case yet.
             AgentMessage.Role.TOOL -> "user"
         },
         content = listOf(ClaudeContentBlock.Text(text = content)),

@@ -32,10 +32,6 @@ import dev.juliamorozova.ragagent.rag.repository.RoomVectorStoreRepository
 import dev.juliamorozova.ragagent.rag.retrieval.DefaultRetrieveRelevantChunksUseCase
 import javax.inject.Singleton
 
-/**
- * Binds the RAG pipeline's concrete implementations to the `domain` module's use case
- * interfaces, so `presentation`/`app` only ever depend on abstractions.
- */
 @Module
 @InstallIn(SingletonComponent::class)
 abstract class RagModule {
@@ -93,7 +89,7 @@ abstract class RagModule {
     abstract fun bindSummarizeNotesUseCase(impl: DefaultSummarizeNotesUseCase): SummarizeNotesUseCase
 
     companion object {
-        /** A singleton so a "device not supported" verdict is remembered for the whole session. */
+        /** A singleton, so a "device not supported" verdict lasts for the session. */
         @Provides
         @Singleton
         fun provideSummaryRouter(onDevice: OnDeviceSummarizer, cloud: CloudSummarizer): SummaryRouter =

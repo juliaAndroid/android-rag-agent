@@ -17,25 +17,13 @@ import org.json.JSONObject
 import java.io.File
 import java.time.Instant
 
-/**
- * Bumped whenever how chunks are chosen changes, so cached chunks and results of an older rule are never
- * mixed with new ones (the files of the previous version stay untouched).
- * v1: the 7 best chunks of any notes. v2: the best chunks of the single best-matching note, at most 5.
- * v3: v2 plus a relevance floor: a topic whose best chunk scores below 0.35 gets no chunks at all.
- */
+/** Bump when chunk selection changes. v1: 7 best chunks. v2: best note only, max 5. v3: v2 plus the 0.35 floor. */
 private const val EVAL_VERSION = "v3"
 
-/** How often and how many times to retry a busy on-device model before giving up on a run. */
 private const val BUSY_RETRY_MS = 3_000L
 private const val MAX_BUSY_RETRIES = 8
 
-/**
- * Debug-only evaluation of the two summarizers on the same chunks.
- *
- * Retrieval is the slow part (each topic is embedded through the rate-limited Voyage client), so
- * chunks are fetched once per topic and cached in a file; both engines then summarize exactly those
- * chunks. Results accumulate in a second file and are exported as one JSON document for scoring.
- */
+/** Debug-only: runs both summarizers on the same cached chunks and exports the results as JSON. */
 class EvalRunner(
     private val context: Context,
     private val summarizeNotes: SummarizeNotesUseCase,
@@ -43,10 +31,7 @@ class EvalRunner(
     private val log: (String) -> Unit,
 ) {
 
-    /**
-     * @param repeats Runs per topic. Claude's output varies between runs, so it gets three; the first
-     * evaluation showed the on-device model returning word-for-word identical text each time, so one is enough.
-     */
+    /** [repeats]: Claude varies between runs, so it gets three; Nano returned identical text each time, so one. */
     enum class Engine(val key: String, val mode: RoutingMode, val repeats: Int) {
         CLAUDE("claude", RoutingMode.CLOUD_ONLY, repeats = 3),
         NANO("nano", RoutingMode.ON_DEVICE_ONLY, repeats = 1),
@@ -63,7 +48,6 @@ class EvalRunner(
 
     private fun readJson(file: File): JSONObject = if (file.exists()) JSONObject(file.readText()) else JSONObject()
 
-    /** Fetches the chunks for every topic that has none cached yet. */
     suspend fun prepareChunks() {
         val topics = topics()
         val stored = readJson(chunksFile)
@@ -75,7 +59,7 @@ class EvalRunner(
                 continue
             }
             val chunks = summarizeNotes.selectChunks(topic.getString("topic"))
-                // Personal chat notes would change what retrieval returns, so they stay out of the evaluation.
+                // Chat notes would change what retrieval returns, so they stay out of the evaluation.
                 .filterNot { ChatNote.isChatNote(it.chunk.documentId) }
             stored.put(id, JSONArray().apply { chunks.forEach { put(it.toJson()) } })
             chunksFile.writeText(stored.toString(2))
@@ -95,7 +79,7 @@ class EvalRunner(
         val results = readJson(resultsFile)
 
         if (engine == Engine.NANO) {
-            // The first on-device call pays for loading the model; keep it out of the timings.
+            // The first on-device call loads the model; keep it out of the timings.
             val first = topics.getJSONObject(0)
             runCatching {
                 summarizeNotes.summarize(chunksOf(stored, first.getString("id")), engine.mode, first.getString("topic"))
@@ -134,11 +118,7 @@ class EvalRunner(
         return true
     }
 
-    /**
-     * The on-device model reports BUSY for a while after a finished call (the router's own short
-     * retries are not enough for back-to-back runs). Wait and retry here so a busy model does not count
-     * as a quality failure, and record how long it took: that is the real BUSY window.
-     */
+    /** Nano reports BUSY after a call: retry so it isn't a quality failure, and record the wait. */
     private suspend fun runPatiently(
         chunks: List<RetrievedChunk>,
         engine: Engine,
@@ -173,7 +153,6 @@ class EvalRunner(
         }
     }
 
-    /** Everything needed to score the run: topics, key points, the exact chunks, and every run's output. */
     fun exportJson(): String {
         val chunks = readJson(chunksFile)
         val results = readJson(resultsFile)
@@ -201,7 +180,6 @@ class EvalRunner(
         return JSONObject().put("meta", meta).put("topics", exported).toString(2)
     }
 
-    /** Forgets the cached chunks and results, e.g. after changing the knowledge base. */
     fun reset() {
         chunksFile.delete()
         resultsFile.delete()

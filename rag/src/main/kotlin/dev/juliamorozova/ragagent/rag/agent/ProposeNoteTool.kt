@@ -6,9 +6,8 @@ import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.json.Json
 
 /**
- * The `save_note` tool as the model sees it, but it only *collects* what the model wants
- * to save — nothing is stored. The user confirms first; storing is [DefaultSaveNoteUseCase]'s
- * job. Create one per proposal run: [proposed] is per-instance state, not shared.
+ * The `save_note` tool: only collects what the model wants to save; the user confirms, then
+ * [DefaultSaveNoteUseCase] stores. One per run.
  */
 class ProposeNoteTool(private val json: Json) : AgentTool {
 
@@ -29,7 +28,6 @@ class ProposeNoteTool(private val json: Json) : AgentTool {
         }
     """.trimIndent()
 
-    /** The call itself is the answer; no follow-up model turn is needed. */
     override val endsTurn: Boolean = true
 
     override suspend fun execute(inputJson: String): String {

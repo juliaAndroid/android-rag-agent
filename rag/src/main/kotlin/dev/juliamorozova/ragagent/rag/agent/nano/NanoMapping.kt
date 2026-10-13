@@ -5,13 +5,12 @@ import com.google.mlkit.genai.common.GenAiException
 import dev.juliamorozova.ragagent.domain.model.FallbackReason
 import dev.juliamorozova.ragagent.domain.summary.OnDeviceAvailability
 
-/** "AiCore service failed to bind": seen on a Galaxy S25 while AICore was disabled in settings. Not in [GenAiException.ErrorCode]. */
+/** "AiCore service failed to bind", seen on a Galaxy S25 with AICore disabled; not in [GenAiException.ErrorCode]. */
 internal const val ERROR_BINDING_FAILURE = 601
 
 /**
- * Translates an ML Kit GenAI error code into the app's own [FallbackReason], so the router never
- * sees library-specific numbers. Only the "device doesn't support Nano" case is permanent; every
- * other reason may clear up, so it must not be mapped to [FallbackReason.UNSUPPORTED_DEVICE].
+ * Maps an ML Kit error code to a [FallbackReason]. Only "device unsupported" is permanent, so nothing else maps to
+ * UNSUPPORTED_DEVICE.
  */
 internal fun fallbackReasonFor(errorCode: Int): FallbackReason = when (errorCode) {
     GenAiException.ErrorCode.AICORE_INCOMPATIBLE -> FallbackReason.UNSUPPORTED_DEVICE
@@ -31,10 +30,6 @@ internal fun fallbackReasonFor(errorCode: Int): FallbackReason = when (errorCode
     else -> FallbackReason.UNKNOWN
 }
 
-/**
- * Maps a feature status to an availability, or null for [FeatureStatus.UNAVAILABLE]: that status
- * carries no reason, so the caller has to find one.
- */
 internal fun availabilityFor(featureStatus: Int): OnDeviceAvailability? = when (featureStatus) {
     FeatureStatus.AVAILABLE -> OnDeviceAvailability.Available
     FeatureStatus.DOWNLOADABLE -> OnDeviceAvailability.Downloadable

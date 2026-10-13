@@ -1,22 +1,19 @@
 package dev.juliamorozova.ragagent
 
 import android.content.Context
+import android.util.Log
 import dagger.hilt.android.qualifiers.ApplicationContext
 import dev.juliamorozova.ragagent.domain.repository.VectorStoreRepository
 import dev.juliamorozova.ragagent.domain.usecase.IngestDocumentUseCase
+import kotlinx.coroutines.CancellationException
 import javax.inject.Inject
 
+private const val TAG = "KnowledgeBaseSeeder"
 private const val KNOWLEDGE_BASE_ASSETS_DIR = "knowledge-base"
 
 /**
- * One-time bootstrap: on first launch (empty vector store), reads the bundled
- * knowledge-base markdown files from assets and runs each through [IngestDocumentUseCase]
- * so retrieval has something real to find. Skips entirely once the store already has
- * content — chunk ids aren't deterministic (UUID.randomUUID() per chunk), so re-running
- * ingestion on every launch would duplicate everything rather than replace it.
- *
- * README.md is excluded — it's a note about the corpus itself, not a real knowledge
- * document, and ingesting it would pollute retrieval with meta-commentary.
+ * Indexes bundled knowledge-base files missing from the store (id = file name), so a failed launch is completed
+ * later.
  */
 class KnowledgeBaseSeeder @Inject constructor(
     @param:ApplicationContext private val context: Context,
@@ -24,18 +21,25 @@ class KnowledgeBaseSeeder @Inject constructor(
     private val ingestDocument: IngestDocumentUseCase,
 ) {
 
-    suspend fun seedIfEmpty() {
-        if (vectorStore.count() > 0) return
+    suspend fun seedMissing() {
+        val present = vectorStore.getAll().map { it.documentId }.toSet()
+        val missing = context.assets.list(KNOWLEDGE_BASE_ASSETS_DIR).orEmpty()
+            .filter { it.endsWith(".md") && it !in present }
 
-        val fileNames = context.assets.list(KNOWLEDGE_BASE_ASSETS_DIR).orEmpty()
-            .filter { it.endsWith(".md") }
-
-        for (fileName in fileNames) {
-            runCatching {
+        for (fileName in missing) {
+            try {
                 val text = context.assets.open("$KNOWLEDGE_BASE_ASSETS_DIR/$fileName")
                     .bufferedReader()
                     .use { it.readText() }
-                ingestDocument(documentId = fileName, text = text)
+                val result = ingestDocument(documentId = fileName, text = text)
+                if (result.failures.isNotEmpty()) {
+                    // A partly stored document counts as present and is not retried.
+                    Log.w(TAG, "$fileName: ${result.failures.size} of ${result.total} chunks failed")
+                }
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                Log.w(TAG, "$fileName was not indexed (${e::class.simpleName}); retried on next launch")
             }
         }
     }

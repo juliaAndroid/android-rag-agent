@@ -1,14 +1,10 @@
 package dev.juliamorozova.ragagent.domain.summary
 
-/** A list marker at the start of a line: "- ", "* ", "• ", "– ", "1. " or "1) ". */
 private val BULLET_MARKER = Regex("""^\s*(?:[-*•–]|\d+[.)])\s+""")
 
 /**
- * Turns a model's bulleted reply into plain bullet strings, so the on-device and the cloud
- * summarizer return the same shape.
- *
- * When the reply has marked lines, only those count, which drops a lead-in such as
- * "Here are three bullets:"; when it has none, every non-blank line counts.
+ * Turns a model's bulleted reply into plain bullets: if lines are marked only those count (drops a lead-in), else
+ * every non-blank line.
  */
 fun parseBullets(raw: String, maxBullets: Int = 3): List<String> {
     val lines = raw.lines().map { it.trim() }.filter { it.isNotEmpty() }

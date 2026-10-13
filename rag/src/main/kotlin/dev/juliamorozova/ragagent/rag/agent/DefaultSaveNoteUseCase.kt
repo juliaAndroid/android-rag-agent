@@ -5,7 +5,6 @@ import dev.juliamorozova.ragagent.domain.usecase.IngestDocumentUseCase
 import dev.juliamorozova.ragagent.domain.usecase.SaveNoteUseCase
 import javax.inject.Inject
 
-/** Stores a user-confirmed note as its own document in the vector store. */
 class DefaultSaveNoteUseCase @Inject constructor(
     private val ingestDocument: IngestDocumentUseCase,
 ) : SaveNoteUseCase {

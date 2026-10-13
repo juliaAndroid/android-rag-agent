@@ -45,16 +45,13 @@ import java.util.concurrent.ExecutionException
 import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
 
-// SPIKE (branch `nano`): throwaway screen to learn how ML Kit GenAI Summarization behaves on a
-// real device. Not meant to be merged; the real integration will live behind a domain interface.
-
 private const val TAG = "NanoSpike"
 private const val KB_DIR = "knowledge-base"
 private const val CLEAN_ARCH_FILE = "clean-architecture-boundaries.md"
 private const val KMM_FILE = "kmm-shared-logic.md"
 private const val MASVS_FILE = "owasp-masvs-ai-pr-review.md"
 
-private val SHORT_TEXT = "Clean Architecture splits an app into domain, data and presentation. " +
+private const val SHORT_TEXT = "Clean Architecture splits an app into domain, data and presentation. " +
     "The domain layer has no Android dependency."
 
 private data class Config(val input: Int, val output: Int, val truncate: Boolean = false)
@@ -126,7 +123,6 @@ private fun Context.newSummarizer(config: Config): Summarizer = Summarization.ge
 private fun Context.readKb(name: String): String =
     assets.open("$KB_DIR/$name").bufferedReader().use { it.readText() }
 
-/** Five 800-char chunks, the size and count the real "summarize my notes" path would feed in. */
 private fun Context.fiveChunks(): String {
     val chunker = SlidingWindowChunker()
     val chunks = chunker(CLEAN_ARCH_FILE, readKb(CLEAN_ARCH_FILE)).take(2) +
@@ -134,7 +130,6 @@ private fun Context.fiveChunks(): String {
     return chunks.joinToString("\n\n") { it.text }
 }
 
-/** One inference with a fresh summarizer, reported on a single line plus the summary text. */
 private suspend fun runOnce(
     context: Context,
     label: String,
@@ -181,13 +176,11 @@ private const val DIALOGUE = "User: I'm planning the architecture of my Android 
     "User: Does the domain module need Android dependencies?\n" +
     "Assistant: No, keeping it plain Kotlin makes it easy to test on the JVM and reuse elsewhere."
 
-/** Drops the most common markdown markers so a text reads like plain prose. */
 private fun String.stripMarkdown(): String = lineSequence()
     .map { it.trim().trimStart('#', '-', '*', '>', '|', ' ').replace("`", "").replace("**", "") }
     .filter { it.isNotBlank() }
     .joinToString("\n")
 
-/** Narrows down why every real summarization came back with the policy-check error. */
 private suspend fun runDiagnose(context: Context, out: (String) -> Unit) {
     out("=== NANO DIAGNOSE ===")
     out("Device: ${Build.MANUFACTURER} ${Build.MODEL}, API ${Build.VERSION.SDK_INT}")
@@ -246,7 +239,6 @@ private suspend fun runAll(context: Context, out: (String) -> Unit) {
                             out("download started: $bytesToDownload bytes")
                         }
                         override fun onDownloadProgress(totalBytesDownloaded: Long) {
-                            // Report roughly every 5% so the screen shows it is alive without flooding.
                             val step = if (totalBytes > 0) totalBytesDownloaded * 20 / totalBytes else -1L
                             if (step > lastReportedStep) {
                                 lastReportedStep = step
@@ -265,8 +257,7 @@ private suspend fun runAll(context: Context, out: (String) -> Unit) {
             out("status after download: ${status.statusName()}")
         }
 
-        // A download started earlier (or still finishing) keeps running inside AICore: wait for it
-        // here instead of giving up, so one tap is enough even in a short testing window.
+        // A download started earlier may still be running in AICore: wait for it instead of giving up.
         if (status == FeatureStatus.DOWNLOADING) {
             val waitStart = SystemClock.elapsedRealtime()
             out("model is downloading, waiting up to 20 min...")

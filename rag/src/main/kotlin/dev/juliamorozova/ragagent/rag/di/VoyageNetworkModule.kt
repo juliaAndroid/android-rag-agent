@@ -16,20 +16,11 @@ import java.util.concurrent.TimeUnit
 import javax.inject.Qualifier
 import javax.inject.Singleton
 
-/**
- * Tags the [OkHttpClient] built for Voyage specifically, so it doesn't collide with
- * [ClaudeHttpClient]'s [OkHttpClient] in the same component — Hilt treats two unqualified
- * `@Provides fun ...(): OkHttpClient` as a duplicate binding.
- */
+/** Qualifier for the Voyage [OkHttpClient]; two unqualified OkHttpClient bindings would collide in Hilt. */
 @Qualifier
 @Retention(AnnotationRetention.BINARY)
 annotation class VoyageHttpClient
 
-/**
- * Wires the Voyage AI embeddings client: JSON (de)serialization, Retrofit. Requests go to the
- * serverless proxy ([BuildConfig.PROXY_BASE_URL]), which adds the Voyage bearer token
- * server-side, so no key lives in the APK.
- */
 @Module
 @InstallIn(SingletonComponent::class)
 object VoyageNetworkModule {
@@ -39,9 +30,7 @@ object VoyageNetworkModule {
     @VoyageHttpClient
     fun provideVoyageOkHttpClient(): OkHttpClient {
         val logging = HttpLoggingInterceptor().apply {
-            // BASIC by default — BODY would print the user's actual note content (the
-            // text being embedded). Flip to BODY only when debugging, same as
-            // ClaudeNetworkModule.
+            // BASIC: BODY would print the text being embedded, i.e. the user's notes.
             level = HttpLoggingInterceptor.Level.BASIC
         }
         return OkHttpClient.Builder()

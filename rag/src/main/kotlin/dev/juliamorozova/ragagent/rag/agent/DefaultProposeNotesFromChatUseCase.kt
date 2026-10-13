@@ -22,12 +22,8 @@ private const val PROPOSE_NOTE_SYSTEM_PROMPT = "You extract durable facts from a
     "notes, so never save a fact that appears only in <assistant_reply>."
 
 /**
- * Drives a focused Claude agent call — separate from [DefaultGenerateAnswerUseCase]'s
- * question-answering loop — whose only job is deciding whether a Q&A exchange holds
- * anything worth remembering. It only *proposes*: the facts come back to the caller, who
- * gets the user's confirmation before anything is stored. Letting the model judge "worth
- * remembering" (rather than always saving the raw answer text) keeps the knowledge base
- * from filling up with one-off retrieval-only exchanges.
+ * A focused agent call that decides whether an exchange is worth remembering and only proposes; the user confirms
+ * before storing.
  */
 class DefaultProposeNotesFromChatUseCase @Inject constructor(
     private val agentLoop: AgentLoop,

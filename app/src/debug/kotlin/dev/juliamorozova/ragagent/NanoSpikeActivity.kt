@@ -7,10 +7,7 @@ import androidx.activity.enableEdgeToEdge
 import androidx.compose.material3.Surface
 import dev.juliamorozova.ragagent.presentation.theme.RagAgentTheme
 
-/**
- * Debug-only entry point (its own launcher icon in debug builds) for the Gemini Nano experiments in
- * [NanoSpikeScreen]. Lives in the debug source set so it never ships in a release build.
- */
+/** Debug-only screen for trying Gemini Nano. Open: long-press the app icon. */
 class NanoSpikeActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)

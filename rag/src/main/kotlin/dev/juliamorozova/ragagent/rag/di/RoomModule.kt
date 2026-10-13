@@ -11,7 +11,6 @@ import dev.juliamorozova.ragagent.rag.local.db.ChunkDao
 import dev.juliamorozova.ragagent.rag.local.db.RagDatabase
 import javax.inject.Singleton
 
-/** Provides the Room database and DAO backing [dev.juliamorozova.ragagent.rag.repository.RoomVectorStoreRepository]. */
 @Module
 @InstallIn(SingletonComponent::class)
 object RoomModule {

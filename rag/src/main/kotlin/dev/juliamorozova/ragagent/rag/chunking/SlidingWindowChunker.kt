@@ -5,16 +5,7 @@ import dev.juliamorozova.ragagent.domain.usecase.ChunkTextUseCase
 import java.util.UUID
 import javax.inject.Inject
 
-/**
- * Fixed-size, overlapping sliding-window chunker.
- *
- * Splits on a fixed character window with overlap rather than sentence/paragraph
- * boundaries — simple and good enough for the portfolio corpus; a boundary-aware
- * strategy is the natural next iteration if chunk quality becomes the bottleneck.
- * Kept here rather than in `domain` because chunking strategy is an implementation
- * detail the domain layer shouldn't know about, only the [ChunkTextUseCase]
- * contract it fulfills.
- */
+/** Fixed-size overlapping character windows, not sentence boundaries: simple and enough for this corpus. */
 class SlidingWindowChunker @Inject constructor() : ChunkTextUseCase {
 
     override fun invoke(documentId: String, text: String): List<Chunk> {

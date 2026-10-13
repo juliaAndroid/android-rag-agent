@@ -14,14 +14,12 @@ class RagAgentApplication : Application() {
     @Inject
     lateinit var knowledgeBaseSeeder: KnowledgeBaseSeeder
 
-    // SupervisorJob: a failure in seeding shouldn't be able to cancel any other
-    // work later launched on this scope. Dispatchers.IO: asset reads + network calls.
     private val applicationScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
     override fun onCreate() {
         super.onCreate()
         applicationScope.launch {
-            knowledgeBaseSeeder.seedIfEmpty()
+            knowledgeBaseSeeder.seedMissing()
         }
     }
 }

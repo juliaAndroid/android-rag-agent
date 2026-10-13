@@ -5,11 +5,6 @@ import dev.juliamorozova.ragagent.domain.model.Chunk
 import dev.juliamorozova.ragagent.domain.model.EmbeddingVector
 import dev.juliamorozova.ragagent.domain.model.RetrievedChunk
 
-/**
- * Explicit domain <-> persistence mappers. Kept as free functions in `rag` (not
- * extension functions on domain types) so the domain module stays free of any
- * knowledge that Room exists.
- */
 fun ChunkEntity.toDomain(): Chunk = Chunk(
     id = id,
     documentId = documentId,

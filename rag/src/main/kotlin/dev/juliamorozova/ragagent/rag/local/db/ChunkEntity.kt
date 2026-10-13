@@ -6,14 +6,6 @@ import androidx.room.PrimaryKey
 import androidx.room.TypeConverter
 import androidx.room.TypeConverters
 
-/**
- * Room-persisted chunk + its embedding vector.
- *
- * The vector is stored as a converted BLOB and similarity is computed in Kotlin (see
- * [dev.juliamorozova.ragagent.rag.repository.RoomVectorStoreRepository]), not in SQL —
- * the simple option for a portfolio-scale corpus. Revisit if/when this moves to an
- * embedded or backend vector DB.
- */
 @Entity(tableName = "chunks")
 @TypeConverters(FloatArrayConverter::class)
 data class ChunkEntity(

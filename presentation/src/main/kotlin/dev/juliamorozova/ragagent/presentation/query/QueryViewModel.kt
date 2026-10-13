@@ -22,8 +22,9 @@ import retrofit2.HttpException
 import java.io.IOException
 import javax.inject.Inject
 
-/** Maps a raw network/HTTP failure to copy safe to show the user — never [Throwable.message],
- *  which can be a raw exception string (stack internals, host names). */
+/**
+ * Maps a failure to text that is safe to show; never [Throwable.message], which can leak internals and host names.
+ */
 private fun Throwable.toUserMessage(): UiMessage = UiMessage(
     when {
         this is HttpException && code() == 429 -> R.string.query_error_rate_limited
@@ -72,7 +73,6 @@ class QueryViewModel @Inject constructor(
         }
     }
 
-    /** The action button: asks or summarizes depending on the selected mode. */
     fun onSubmit() {
         when (_uiState.value.mode) {
             QueryMode.ASK -> ask()
@@ -124,7 +124,6 @@ class QueryViewModel @Inject constructor(
         }
     }
 
-    /** Downloads the on-device model when it is downloadable, reporting progress in [QueryUiState.modelStatus]. */
     fun onDownloadModel() {
         if (_uiState.value.modelStatus != ModelStatus.Downloadable) return
 
@@ -158,8 +157,10 @@ class QueryViewModel @Inject constructor(
         _uiState.update { it.copy(modelStatus = status) }
     }
 
-    /** Asks the agent what is worth saving. Nothing is stored yet: the proposals go to a
-     *  confirmation dialog ([QueryUiState.pendingNotes]) and are stored only by [onConfirmSave]. */
+    /**
+     * Asks the agent what is worth saving; proposals wait in a dialog ([QueryUiState.pendingNotes]) until
+     * [onConfirmSave].
+     */
     fun saveAsNote() {
         val query = _uiState.value.answeredQuery ?: return
         val answer = _uiState.value.answer ?: return
@@ -185,7 +186,6 @@ class QueryViewModel @Inject constructor(
         }
     }
 
-    /** Stores exactly the notes the user just saw in the dialog. */
     fun onConfirmSave() {
         val notes = _uiState.value.pendingNotes
         if (notes.isEmpty()) return
@@ -210,7 +210,6 @@ class QueryViewModel @Inject constructor(
         }
     }
 
-    /** The user declined: drop the proposals without storing anything. */
     fun onDismissSave() {
         _uiState.update { it.copy(pendingNotes = emptyList()) }
     }

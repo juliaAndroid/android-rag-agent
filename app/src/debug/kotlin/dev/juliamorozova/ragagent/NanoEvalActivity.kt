@@ -42,8 +42,8 @@ import javax.inject.Inject
 private const val TAG = "NanoEval"
 
 /**
- * Debug-only screen that compares the on-device and the cloud summarizer on the same chunks
- * (see [EvalRunner]). Opened from the app icon's long-press shortcuts in debug builds.
+ * Debug-only screen (Nano vs. Claude). Open: long-press the app icon, or `adb shell am start -n
+ * <pkg>/.NanoEvalActivity [--es auto prepare,claude,nano]`.
  */
 @AndroidEntryPoint
 class NanoEvalActivity : ComponentActivity() {
@@ -54,7 +54,6 @@ class NanoEvalActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
-        // Optional automation for shell use: adb shell am start -n .../.NanoEvalActivity --es auto prepare,claude
         val auto = intent.getStringExtra("auto")
         setContent {
             RagAgentTheme {
@@ -87,7 +86,6 @@ private fun NanoEvalScreen(summarizeNotes: SummarizeNotesUseCase, onDevice: OnDe
         log += "Files: ${runner.outputPath}"
     }
 
-    // Runs the steps named in the "auto" extra (prepare, claude, nano, reset) one after another.
     LaunchedEffect(auto) {
         if (auto == null) return@LaunchedEffect
         running = true

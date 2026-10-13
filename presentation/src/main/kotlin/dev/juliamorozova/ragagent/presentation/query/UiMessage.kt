@@ -7,9 +7,8 @@ import dev.juliamorozova.ragagent.domain.model.FallbackReason
 import dev.juliamorozova.ragagent.presentation.R
 
 /**
- * Text for the user as a string resource plus arguments, so the ViewModel stays free of
- * Android's Context and the screen picks the localized string. An argument may itself be a
- * [UiMessage] (e.g. "Failed to save: <reason>").
+ * Text as a string resource plus arguments, so the ViewModel needs no Context; an argument may itself be a
+ * [UiMessage].
  */
 data class UiMessage(@StringRes val resId: Int, val args: List<Any> = emptyList())
 
@@ -19,7 +18,6 @@ fun UiMessage.asString(): String {
     return stringResource(resId, *resolved.toTypedArray())
 }
 
-/** One string per reason; the exhaustive `when` makes the compiler ask for a string when a reason is added. */
 @StringRes
 fun FallbackReason.toStringRes(): Int = when (this) {
     FallbackReason.UNSUPPORTED_DEVICE -> R.string.query_fallback_unsupported_device

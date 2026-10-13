@@ -5,31 +5,21 @@ import dev.juliamorozova.ragagent.domain.model.RetrievedChunk
 import dev.juliamorozova.ragagent.domain.summary.RoutingMode
 
 /**
- * "Summarize my notes on X": finds the notes most relevant to a topic and summarizes them,
- * on the device when possible and in the cloud otherwise.
- *
- * The two steps are also available separately so the same chunks can be summarized more than
- * once, e.g. by both engines in an evaluation.
+ * "Summarize my notes on X": finds the notes for a topic and summarizes them, on the device or in the cloud. The
+ * two steps are also separate, so both engines can summarize the same chunks.
  */
 interface SummarizeNotesUseCase {
 
-    /**
-     * @param mode Pins one engine instead of letting the router choose (used to compare the two).
-     * @return The summary, or null when the topic is blank or the knowledge base has nothing for it.
-     */
+    /** [mode] pins one engine. Null when the topic is blank or nothing matches. */
     suspend operator fun invoke(topic: String, mode: RoutingMode = RoutingMode.AUTO): NotesSummary?
 
     /**
-     * Searches the notes for [topic] and keeps the best chunks of the single best-matching note, in
-     * reading order and within the on-device input limit. Empty for a blank topic or when nothing is found.
+     * Keeps the best chunks of the best-matching note, in reading order and within the on-device limit; empty if
+     * nothing is found.
      */
     suspend fun selectChunks(topic: String): List<RetrievedChunk>
 
-    /**
-     * Summarizes exactly [chunks], in the given order. Null when [chunks] is empty.
-     *
-     * @param topic Passed to the cloud summarizer so it can focus on it; the on-device model ignores it.
-     */
+    /** Summarizes exactly [chunks] in order (null when empty); [topic] goes to the cloud summarizer only. */
     suspend fun summarize(
         chunks: List<RetrievedChunk>,
         mode: RoutingMode = RoutingMode.AUTO,

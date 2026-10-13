@@ -11,12 +11,6 @@ import dev.juliamorozova.ragagent.domain.repository.VectorStoreRepository
 import javax.inject.Inject
 import kotlin.math.sqrt
 
-/**
- * Room-backed [VectorStoreRepository] with brute-force cosine similarity computed in
- * Kotlin — the "simple option" from the project's technical spec. Fine for a
- * portfolio corpus; see README "Known trade-offs" for the trade-off vs. an
- * embedded/backend vector DB.
- */
 class RoomVectorStoreRepository @Inject constructor(
     private val chunkDao: ChunkDao,
 ) : VectorStoreRepository {

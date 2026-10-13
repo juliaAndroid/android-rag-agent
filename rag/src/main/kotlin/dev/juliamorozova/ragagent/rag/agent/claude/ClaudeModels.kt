@@ -9,12 +9,6 @@ import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 
-/**
- * Wire-format DTOs for the Claude Messages API (`POST /v1/messages`), scoped to what the
- * agent loop actually needs: text + tool-use content blocks, no image/document support yet.
- *
- * https://docs.claude.com/en/api/messages
- */
 
 @Serializable
 data class ClaudeMessageRequest(
@@ -35,8 +29,7 @@ data class ClaudeMessageResponse(
 
 @Serializable
 data class ClaudeMessage(
-    /** "user" or "assistant" — Claude has no separate wire role for tool results; they
-     *  travel back as "user" messages containing `tool_result` content blocks. */
+    /** "user" or "assistant"; tool results travel back as "user" messages with `tool_result` blocks. */
     val role: String,
     val content: List<ClaudeContentBlock>,
 )
@@ -49,10 +42,8 @@ data class ClaudeTool(
 )
 
 /**
- * A single content block inside a [ClaudeMessage]. Anthropic distinguishes block kinds by
- * a "type" string in the JSON rather than a Kotlin-friendly discriminator, so decoding goes
- * through [ClaudeContentBlockSerializer] instead of [kotlinx.serialization]'s default sealed
- * polymorphism.
+ * One content block of a [ClaudeMessage]; decoded by [ClaudeContentBlockSerializer] because blocks are told apart
+ * by a "type" string.
  */
 @Serializable(with = ClaudeContentBlockSerializer::class)
 sealed interface ClaudeContentBlock {

@@ -6,7 +6,9 @@ import java.util.concurrent.ExecutionException
 import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
 
-/** Suspends until the future completes; ML Kit GenAI returns Guava futures. Cancelling the coroutine cancels the future. */
+/**
+ * Suspends until the future completes (ML Kit returns Guava futures); cancelling the coroutine cancels the future.
+ */
 internal suspend fun <T> ListenableFuture<T>.await(): T = suspendCancellableCoroutine { continuation ->
     addListener(
         {

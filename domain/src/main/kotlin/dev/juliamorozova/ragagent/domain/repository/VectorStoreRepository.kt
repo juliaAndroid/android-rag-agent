@@ -5,11 +5,8 @@ import dev.juliamorozova.ragagent.domain.model.EmbeddingVector
 import dev.juliamorozova.ragagent.domain.model.RetrievedChunk
 
 /**
- * Storage + similarity search over chunk embeddings.
- *
- * Week 1 implementation: Room/SQLite with brute-force cosine similarity (see plan).
- * Swappable later for an embedded or backend vector DB (stretch goal) without the
- * domain or presentation layers changing.
+ * Storage and similarity search over chunk embeddings; Room with brute-force cosine now, swappable for a vector
+ * DB.
  */
 interface VectorStoreRepository {
     suspend fun store(chunk: Chunk, embedding: EmbeddingVector)
@@ -18,11 +15,7 @@ interface VectorStoreRepository {
 
     suspend fun clear()
 
-    /** Number of chunks currently stored — lets callers (e.g. a startup seed step)
-     * check "is there anything here yet?" without pulling all rows into memory. */
     suspend fun count(): Int
 
-    /** Every chunk currently stored. Portfolio-scale corpus only — see
-     * [findSimilar]'s brute-force trade-off note; this has the same ceiling. */
     suspend fun getAll(): List<Chunk>
 }

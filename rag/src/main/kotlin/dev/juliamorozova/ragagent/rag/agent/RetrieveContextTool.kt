@@ -13,11 +13,6 @@ import kotlinx.serialization.json.Json
 import javax.inject.Inject
 import javax.inject.Singleton
 
-/**
- * Exposes RAG retrieval to the Claude agent loop as a callable tool, so the model
- * decides *when* to pull context instead of context always being force-fed into
- * every prompt.
- */
 @Singleton
 class RetrieveContextTool @Inject constructor(
     private val retrieveRelevantChunks: RetrieveRelevantChunksUseCase,
@@ -41,19 +36,13 @@ class RetrieveContextTool @Inject constructor(
     """.trimIndent()
 
     /**
-     * Chunks returned by the most recent [execute] call, so [DefaultGenerateAnswerUseCase]
-     * can surface them as citations without re-running retrieval or threading results
-     * through the [dev.juliamorozova.ragagent.domain.agent.AgentLoop] contract itself.
-     *
-     * MVP scope: one query in flight at a time, which matches the app's single-screen
-     * query UI. A per-request scope (instead of a Hilt singleton) would be the fix if
-     * this ever needs to handle concurrent queries.
+     * Chunks from the latest [execute], so answers can cite them. Assumes one query at a time; concurrent queries
+     * need a per-request scope.
      */
     var lastRetrieved: List<RetrievedChunk> = emptyList()
         private set
 
-    /** Clears any leftover result from a previous query, so a query that never calls
-     *  this tool doesn't inherit stale citations from an earlier, unrelated one. */
+    /** Clears the previous result so a query that never calls this tool doesn't inherit old citations. */
     fun clearLastRetrieved() {
         lastRetrieved = emptyList()
     }

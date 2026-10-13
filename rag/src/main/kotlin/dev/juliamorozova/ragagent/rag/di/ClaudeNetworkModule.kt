@@ -16,20 +16,11 @@ import java.util.concurrent.TimeUnit
 import javax.inject.Qualifier
 import javax.inject.Singleton
 
-/**
- * Tags the [OkHttpClient] built for Claude specifically, so it doesn't collide with
- * [VoyageHttpClient]'s [OkHttpClient] in the same component — Hilt treats two unqualified
- * `@Provides fun ...(): OkHttpClient` as a duplicate binding and fails the build.
- */
+/** Qualifier for the Claude [OkHttpClient]; two unqualified OkHttpClient bindings would collide in Hilt. */
 @Qualifier
 @Retention(AnnotationRetention.BINARY)
 annotation class ClaudeHttpClient
 
-/**
- * Wires the Claude Messages API client: JSON (de)serialization, Retrofit. Requests go to the
- * serverless proxy ([BuildConfig.PROXY_BASE_URL]), which adds the API key and the
- * `anthropic-version` header server-side, so neither lives in the APK.
- */
 @Module
 @InstallIn(SingletonComponent::class)
 object ClaudeNetworkModule {
@@ -47,8 +38,7 @@ object ClaudeNetworkModule {
     @ClaudeHttpClient
     fun provideClaudeOkHttpClient(): OkHttpClient {
         val logging = HttpLoggingInterceptor().apply {
-            // BASIC: BODY would print the user's questions, note passages and answers to logcat in every build.
-            // Flip to BODY only on a development machine while debugging, and never commit it.
+            // BASIC: BODY would print questions, note passages and answers to logcat in every build.
             level = HttpLoggingInterceptor.Level.BASIC
         }
         return OkHttpClient.Builder()
