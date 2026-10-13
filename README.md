@@ -19,6 +19,21 @@ the phone supports it. Built on Clean Architecture.
   Nano (ML Kit GenAI Summarization) when available, and by Claude otherwise. A badge shows which one ran
   and, for a cloud summary, why the on-device model was not used.
 
+## Demo
+
+<table>
+  <tr>
+    <td align="center"><img src="media/summarize-on-device.gif" width="240" alt="Summarize on a Galaxy S25"></td>
+    <td align="center"><img src="media/summarize-cloud-fallback.gif" width="240" alt="Summarize on a phone without on-device AI"></td>
+    <td align="center"><img src="media/ask-with-sources.gif" width="240" alt="Ask with sources"></td>
+  </tr>
+  <tr>
+    <td align="center">Summarize on a Galaxy S25: Gemini Nano on the device ("On-device")</td>
+    <td align="center">Summarize on a phone without on-device AI (Android emulator; a Galaxy S23 behaves the same): Claude, with the reason</td>
+    <td align="center">Ask: an answer from the notes, with its sources</td>
+  </tr>
+</table>
+
 ## Architecture
 
 ```mermaid
@@ -151,7 +166,7 @@ What the numbers say:
 
 Caveats: the first evaluation (v1) ran on an older knowledge base; the scorer was Claude, which may favor its own family;
 Claude and Nano do not receive the same input, so the comparison describes the app as it is; Nano had one run per topic
-because its output was identical across repeated runs in v1.
+because its output was identical across repeated runs in v1. The raw outputs of the run were not kept; the scoring and the numbers above are what is recorded.
 
 Note on privacy: only the generation of the summary stays on the phone. Embedding the topic, and the text
 of saved notes, still goes to Voyage through the proxy.

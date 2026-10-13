@@ -27,9 +27,18 @@ what a leaked address can do, not only hide a secret.
    deployed stack and the keys were read from fresh containers (a changed environment variable forces them,
    because warm containers hold the keys in memory and would hide a missing permission). A customer-managed
    key would need `kms:Decrypt` added.
+3a. **Give the deploy user only what the stack needs.** The IAM user that runs `sam deploy` holds one customer-managed
+   policy scoped to this stack (the stack, its Lambda function, API and log group, and its roles; only the Lambda
+   logging policy can be attached to those roles), plus two narrow inline policies (the SAM bucket and the two SSM
+   parameters). It started with five AWS-managed full-access policies, among them `IAMFullAccess`, which would let a
+   leaked key grant itself anything. The broad ones were removed one at a time with a deploy after each, and the last
+   check was a real change that updated the role, the function and the API. The user can no longer change its own
+   permissions; that takes the root user.
 4. **Limit what a leaked proxy address can do**, since the address is in the APK: a fixed model per provider,
    a field allowlist, a cap on output tokens, request size limits, no server-side tools such as web search,
-   rate limiting on the stage, and a spend limit at each provider as the real backstop.
+   rate limiting on the stage, and spending caps as the real backstop: a monthly limit at Anthropic ($5, with an
+   email alert at $4), no payment method at Voyage so its free allowance is the cap, and an AWS zero-spend budget
+   that emails on the first charge.
 5. **Do not authenticate callers, and say so.** The production answer would be Play Integrity, which proves the
    request comes from the genuine app on a real device. It is not implemented because the app is not published
    to Google Play.
